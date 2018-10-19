@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -248,7 +248,7 @@ function prepareChildrenArray(childrenArray) {
   return childrenArray;
 }
 
-function prepareChildrenLegacyIterable(childrenArray) {
+function prepareChildrenIterable(childrenArray) {
   return {
     '@@iterator': function*() {
       // eslint-disable-next-line no-for-of-loops/no-for-of-loops
@@ -259,27 +259,9 @@ function prepareChildrenLegacyIterable(childrenArray) {
   };
 }
 
-function prepareChildrenModernIterable(childrenArray) {
-  return {
-    [Symbol.iterator]: function*() {
-      // eslint-disable-next-line no-for-of-loops/no-for-of-loops
-      for (const child of childrenArray) {
-        yield child;
-      }
-    },
-  };
-}
-
 function testPropsSequence(sequence) {
   testPropsSequenceWithPreparedChildren(sequence, prepareChildrenArray);
-  testPropsSequenceWithPreparedChildren(
-    sequence,
-    prepareChildrenLegacyIterable,
-  );
-  testPropsSequenceWithPreparedChildren(
-    sequence,
-    prepareChildrenModernIterable,
-  );
+  testPropsSequenceWithPreparedChildren(sequence, prepareChildrenIterable);
 }
 
 describe('ReactMultiChildReconcile', () => {
@@ -329,7 +311,7 @@ describe('ReactMultiChildReconcile', () => {
     );
   });
 
-  it('should reset internal state if removed then readded in a legacy iterable', () => {
+  it('should reset internal state if removed then readded in an iterable', () => {
     // Test basics.
     const props = {
       usernameToStatus: {
@@ -341,7 +323,7 @@ describe('ReactMultiChildReconcile', () => {
     const parentInstance = ReactDOM.render(
       <FriendsStatusDisplay
         {...props}
-        prepareChildren={prepareChildrenLegacyIterable}
+        prepareChildren={prepareChildrenIterable}
       />,
       container,
     );
@@ -350,7 +332,7 @@ describe('ReactMultiChildReconcile', () => {
 
     // Now remove the child.
     ReactDOM.render(
-      <FriendsStatusDisplay prepareChildren={prepareChildrenLegacyIterable} />,
+      <FriendsStatusDisplay prepareChildren={prepareChildrenIterable} />,
       container,
     );
     statusDisplays = parentInstance.getStatusDisplays();
@@ -360,49 +342,7 @@ describe('ReactMultiChildReconcile', () => {
     ReactDOM.render(
       <FriendsStatusDisplay
         {...props}
-        prepareChildren={prepareChildrenLegacyIterable}
-      />,
-      container,
-    );
-    statusDisplays = parentInstance.getStatusDisplays();
-    expect(statusDisplays.jcw).toBeTruthy();
-    expect(statusDisplays.jcw.getInternalState()).not.toBe(
-      startingInternalState,
-    );
-  });
-
-  it('should reset internal state if removed then readded in a modern iterable', () => {
-    // Test basics.
-    const props = {
-      usernameToStatus: {
-        jcw: 'jcwStatus',
-      },
-    };
-
-    const container = document.createElement('div');
-    const parentInstance = ReactDOM.render(
-      <FriendsStatusDisplay
-        {...props}
-        prepareChildren={prepareChildrenModernIterable}
-      />,
-      container,
-    );
-    let statusDisplays = parentInstance.getStatusDisplays();
-    const startingInternalState = statusDisplays.jcw.getInternalState();
-
-    // Now remove the child.
-    ReactDOM.render(
-      <FriendsStatusDisplay prepareChildren={prepareChildrenModernIterable} />,
-      container,
-    );
-    statusDisplays = parentInstance.getStatusDisplays();
-    expect(statusDisplays.jcw).toBeFalsy();
-
-    // Now reset the props that cause there to be a child
-    ReactDOM.render(
-      <FriendsStatusDisplay
-        {...props}
-        prepareChildren={prepareChildrenModernIterable}
+        prepareChildren={prepareChildrenIterable}
       />,
       container,
     );

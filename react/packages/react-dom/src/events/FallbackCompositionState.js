@@ -1,12 +1,14 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
+import getTextContentAccessor from '../client/getTextContentAccessor';
+
 /**
- * These variables store information about text content of a target node,
+ * This helper object stores information about text content of a target node,
  * allowing comparison of content before and after a given event.
  *
  * Identify the node where selection currently begins, then observe
@@ -16,30 +18,31 @@
  *
  *
  */
-
-let root = null;
-let startText = null;
-let fallbackText = null;
+const compositionState = {
+  _root: null,
+  _startText: null,
+  _fallbackText: null,
+};
 
 export function initialize(nativeEventTarget) {
-  root = nativeEventTarget;
-  startText = getText();
+  compositionState._root = nativeEventTarget;
+  compositionState._startText = getText();
   return true;
 }
 
 export function reset() {
-  root = null;
-  startText = null;
-  fallbackText = null;
+  compositionState._root = null;
+  compositionState._startText = null;
+  compositionState._fallbackText = null;
 }
 
 export function getData() {
-  if (fallbackText) {
-    return fallbackText;
+  if (compositionState._fallbackText) {
+    return compositionState._fallbackText;
   }
 
   let start;
-  const startValue = startText;
+  const startValue = compositionState._startText;
   const startLength = startValue.length;
   let end;
   const endValue = getText();
@@ -59,13 +62,13 @@ export function getData() {
   }
 
   const sliceTail = end > 1 ? 1 - end : undefined;
-  fallbackText = endValue.slice(start, sliceTail);
-  return fallbackText;
+  compositionState._fallbackText = endValue.slice(start, sliceTail);
+  return compositionState._fallbackText;
 }
 
 export function getText() {
-  if ('value' in root) {
-    return root.value;
+  if ('value' in compositionState._root) {
+    return compositionState._root.value;
   }
-  return root.textContent;
+  return compositionState._root[getTextContentAccessor()];
 }

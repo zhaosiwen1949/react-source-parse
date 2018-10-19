@@ -1,14 +1,26 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  *
- * @flow strict
+ * @flow
  */
 
+import invariant from 'fbjs/lib/invariant';
+
+// Exports ReactDOM.createRoot
 export const enableUserTimingAPI = __DEV__;
 
+// Mutating mode (React DOM, React ART, React Native):
+export const enableMutatingReconciler = true;
+// Experimental noop mode (currently unused):
+export const enableNoopReconciler = false;
+// Experimental persistent mode (Fabric):
+export const enablePersistentReconciler = false;
+// Experimental error-boundary API that can recover from errors within a single
+// render phase
+export const enableGetDerivedStateFromCatch = false;
 // Helps identify side effects in begin-phase lifecycle hooks and setState reducers:
 export const debugRenderPhaseSideEffects = false;
 
@@ -25,20 +37,9 @@ export const replayFailedUnitOfWorkWithInvokeGuardedCallback = __DEV__;
 // Warn about deprecated, async-unsafe lifecycles; relates to RFC #6:
 export const warnAboutDeprecatedLifecycles = false;
 
-// Gather advanced timing metrics for Profiler subtrees.
-export const enableProfilerTimer = __PROFILE__;
-
-// Trace which interactions trigger each commit.
-export const enableSchedulerTracing = __PROFILE__;
-
-// Only used in www builds.
-export const enableSuspenseServerRenderer = false;
+export const alwaysUseRequestIdleCallbackPolyfill = false;
 
 // Only used in www builds.
 export function addUserTimingListener() {
-  throw new Error('Not implemented.');
+  invariant(false, 'Not implemented.');
 }
-
-// React Fire: prevent the value and checked attributes from syncing
-// with their related DOM properties
-export const disableInputAttributeSyncing = false;

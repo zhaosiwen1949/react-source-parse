@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -15,29 +15,21 @@ const React = require('react');
 const ReactDOM = require('react-dom');
 const ReactTestUtils = require('react-dom/test-utils');
 
-// Isolate test renderer.
-jest.resetModules();
-const ReactTestRenderer = require('react-test-renderer');
-
-// Isolate ART renderer.
-jest.resetModules();
-const ReactART = require('react-art');
-const ARTSVGMode = require('art/modes/svg');
-const ARTCurrentMode = require('art/modes/current');
-const Circle = require('react-art/Circle');
-const Rectangle = require('react-art/Rectangle');
-const Wedge = require('react-art/Wedge');
-
-// Isolate the noop renderer
-jest.resetModules();
-const ReactNoop = require('react-noop-renderer');
-
 let Group;
 let Shape;
 let Surface;
 let TestComponent;
 
 const Missing = {};
+
+const ReactART = require('react-art');
+const ARTSVGMode = require('art/modes/svg');
+const ARTCurrentMode = require('art/modes/current');
+
+const renderer = require('react-test-renderer');
+const Circle = require('react-art/Circle');
+const Rectangle = require('react-art/Rectangle');
+const Wedge = require('react-art/Wedge');
 
 function testDOMNodeStructure(domNode, expectedStructure) {
   expect(domNode).toBeDefined();
@@ -75,8 +67,6 @@ describe('ReactART', () => {
     Surface = ReactART.Surface;
 
     TestComponent = class extends React.Component {
-      group = React.createRef();
-
       render() {
         const a = (
           <Shape
@@ -110,7 +100,7 @@ describe('ReactART', () => {
 
         return (
           <Surface width={150} height={200}>
-            <Group ref={this.group}>
+            <Group ref="group">
               {this.props.flipped ? [b, a, c] : [a, b, c]}
             </Group>
           </Surface>
@@ -127,7 +117,7 @@ describe('ReactART', () => {
   it('should have the correct lifecycle state', () => {
     let instance = <TestComponent />;
     instance = ReactTestUtils.renderIntoDocument(instance);
-    const group = instance.group.current;
+    const group = instance.refs.group;
     // Duck type test for an ART group
     expect(typeof group.indicate).toBe('function');
   });
@@ -266,17 +256,15 @@ describe('ReactART', () => {
     let ref = null;
 
     class Outer extends React.Component {
-      test = React.createRef();
-
       componentDidMount() {
-        ref = this.test.current;
+        ref = this.refs.test;
       }
 
       render() {
         return (
           <Surface>
             <Group>
-              <CustomShape ref={this.test} />
+              <CustomShape ref="test" />
             </Group>
           </Surface>
         );
@@ -297,28 +285,26 @@ describe('ReactART', () => {
     let ref = {};
 
     class Outer extends React.Component {
-      test = React.createRef();
-
       componentDidMount() {
-        ref = this.test.current;
+        ref = this.refs.test;
       }
 
       componentDidUpdate() {
-        ref = this.test.current;
+        ref = this.refs.test;
       }
 
       render() {
         return (
           <Surface>
             <Group>
-              {this.props.mountCustomShape && <CustomShape ref={this.test} />}
+              {this.props.mountCustomShape && <CustomShape ref="test" />}
             </Group>
           </Surface>
         );
       }
     }
     ReactDOM.render(<Outer />, container);
-    expect(ref).toBe(null);
+    expect(ref).not.toBeDefined();
     ReactDOM.render(<Outer mountCustomShape={true} />, container);
     expect(ref.constructor).toBe(CustomShape);
   });
@@ -353,62 +339,11 @@ describe('ReactART', () => {
     doClick(instance);
     expect(onClick2).toBeCalled();
   });
-
-  it('can concurrently render with a "primary" renderer while sharing context', () => {
-    const CurrentRendererContext = React.createContext(null);
-
-    function Yield(props) {
-      ReactNoop.yield(props.value);
-      return null;
-    }
-
-    let ops = [];
-    function LogCurrentRenderer() {
-      return (
-        <CurrentRendererContext.Consumer>
-          {currentRenderer => {
-            ops.push(currentRenderer);
-            return null;
-          }}
-        </CurrentRendererContext.Consumer>
-      );
-    }
-
-    // Using test renderer instead of the DOM renderer here because async
-    // testing APIs for the DOM renderer don't exist.
-    ReactNoop.render(
-      <CurrentRendererContext.Provider value="Test">
-        <Yield value="A" />
-        <Yield value="B" />
-        <LogCurrentRenderer />
-        <Yield value="C" />
-      </CurrentRendererContext.Provider>,
-    );
-
-    ReactNoop.flushThrough(['A']);
-
-    ReactDOM.render(
-      <Surface>
-        <LogCurrentRenderer />
-        <CurrentRendererContext.Provider value="ART">
-          <LogCurrentRenderer />
-        </CurrentRendererContext.Provider>
-      </Surface>,
-      container,
-    );
-
-    expect(ops).toEqual([null, 'ART']);
-
-    ops = [];
-    expect(ReactNoop.flush()).toEqual(['B', 'C']);
-
-    expect(ops).toEqual(['Test']);
-  });
 });
 
 describe('ReactARTComponents', () => {
   it('should generate a <Shape> with props for drawing the Circle', () => {
-    const circle = ReactTestRenderer.create(
+    const circle = renderer.create(
       <Circle radius={10} stroke="green" strokeWidth={3} fill="blue" />,
     );
     expect(circle.toJSON()).toMatchSnapshot();
@@ -416,9 +351,7 @@ describe('ReactARTComponents', () => {
 
   it('should warn if radius is missing on a Circle component', () => {
     expect(() =>
-      ReactTestRenderer.create(
-        <Circle stroke="green" strokeWidth={3} fill="blue" />,
-      ),
+      renderer.create(<Circle stroke="green" strokeWidth={3} fill="blue" />),
     ).toWarnDev(
       'Warning: Failed prop type: The prop `radius` is marked as required in `Circle`, ' +
         'but its value is `undefined`.' +
@@ -427,7 +360,7 @@ describe('ReactARTComponents', () => {
   });
 
   it('should generate a <Shape> with props for drawing the Rectangle', () => {
-    const rectangle = ReactTestRenderer.create(
+    const rectangle = renderer.create(
       <Rectangle width={50} height={50} stroke="green" fill="blue" />,
     );
     expect(rectangle.toJSON()).toMatchSnapshot();
@@ -435,7 +368,7 @@ describe('ReactARTComponents', () => {
 
   it('should warn if width/height is missing on a Rectangle component', () => {
     expect(() =>
-      ReactTestRenderer.create(<Rectangle stroke="green" fill="blue" />),
+      renderer.create(<Rectangle stroke="green" fill="blue" />),
     ).toWarnDev([
       'Warning: Failed prop type: The prop `width` is marked as required in `Rectangle`, ' +
         'but its value is `undefined`.' +
@@ -447,21 +380,21 @@ describe('ReactARTComponents', () => {
   });
 
   it('should generate a <Shape> with props for drawing the Wedge', () => {
-    const wedge = ReactTestRenderer.create(
+    const wedge = renderer.create(
       <Wedge outerRadius={50} startAngle={0} endAngle={360} fill="blue" />,
     );
     expect(wedge.toJSON()).toMatchSnapshot();
   });
 
   it('should return null if startAngle equals to endAngle on Wedge', () => {
-    const wedge = ReactTestRenderer.create(
+    const wedge = renderer.create(
       <Wedge outerRadius={50} startAngle={0} endAngle={0} fill="blue" />,
     );
     expect(wedge.toJSON()).toBeNull();
   });
 
   it('should warn if outerRadius/startAngle/endAngle is missing on a Wedge component', () => {
-    expect(() => ReactTestRenderer.create(<Wedge fill="blue" />)).toWarnDev([
+    expect(() => renderer.create(<Wedge fill="blue" />)).toWarnDev([
       'Warning: Failed prop type: The prop `outerRadius` is marked as required in `Wedge`, ' +
         'but its value is `undefined`.' +
         '\n    in Wedge (at **)',

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -11,11 +11,13 @@
 
 let React;
 let ReactDOM;
+let ReactTestUtils;
 
 describe('ReactCompositeComponentNestedState-state', () => {
   beforeEach(() => {
     React = require('react');
     ReactDOM = require('react-dom');
+    ReactTestUtils = require('react-dom/test-utils');
   });
 
   it('should provide up to date values for props', () => {
@@ -100,7 +102,7 @@ describe('ReactCompositeComponentNestedState-state', () => {
     void ReactDOM.render(<ParentComponent logger={logger} />, container);
 
     // click "light green"
-    container.childNodes[0].childNodes[3].click();
+    ReactTestUtils.Simulate.click(container.childNodes[0].childNodes[3]);
 
     expect(logger.mock.calls).toEqual([
       ['parent-render', 'blue'],

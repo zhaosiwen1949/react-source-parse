@@ -1,12 +1,13 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import invariant from 'shared/invariant';
-import warning from 'shared/warning';
+import emptyFunction from 'fbjs/lib/emptyFunction';
+import invariant from 'fbjs/lib/invariant';
+import warning from 'fbjs/lib/warning';
 import {
   getIteratorFn,
   REACT_ELEMENT_TYPE,
@@ -166,7 +167,8 @@ function traverseAllChildrenImpl(
             didWarnAboutMaps,
             'Using Maps as children is unsupported and will likely yield ' +
               'unexpected results. Convert it to a sequence/iterable of keyed ' +
-              'ReactElements instead.',
+              'ReactElements instead.%s',
+            ReactDebugCurrentFrame.getStackAddendum(),
           );
           didWarnAboutMaps = true;
         }
@@ -262,7 +264,7 @@ function forEachSingleChild(bookKeeping, child, name) {
 /**
  * Iterates through children that are typically specified as `props.children`.
  *
- * See https://reactjs.org/docs/react-api.html#reactchildrenforeach
+ * See https://reactjs.org/docs/react-api.html#react.children.foreach
  *
  * The provided forEachFunc(child, index) will be called for each
  * leaf child.
@@ -290,7 +292,12 @@ function mapSingleChildIntoContext(bookKeeping, child, childKey) {
 
   let mappedChild = func.call(context, child, bookKeeping.count++);
   if (Array.isArray(mappedChild)) {
-    mapIntoWithKeyPrefixInternal(mappedChild, result, childKey, c => c);
+    mapIntoWithKeyPrefixInternal(
+      mappedChild,
+      result,
+      childKey,
+      emptyFunction.thatReturnsArgument,
+    );
   } else if (mappedChild != null) {
     if (isValidElement(mappedChild)) {
       mappedChild = cloneAndReplaceKey(
@@ -326,7 +333,7 @@ function mapIntoWithKeyPrefixInternal(children, array, prefix, func, context) {
 /**
  * Maps children that are typically specified as `props.children`.
  *
- * See https://reactjs.org/docs/react-api.html#reactchildrenmap
+ * See https://reactjs.org/docs/react-api.html#react.children.map
  *
  * The provided mapFunction(child, key, index) will be called for each
  * leaf child.
@@ -349,24 +356,29 @@ function mapChildren(children, func, context) {
  * Count the number of children that are typically specified as
  * `props.children`.
  *
- * See https://reactjs.org/docs/react-api.html#reactchildrencount
+ * See https://reactjs.org/docs/react-api.html#react.children.count
  *
  * @param {?*} children Children tree container.
  * @return {number} The number of children.
  */
-function countChildren(children) {
-  return traverseAllChildren(children, () => null, null);
+function countChildren(children, context) {
+  return traverseAllChildren(children, emptyFunction.thatReturnsNull, null);
 }
 
 /**
  * Flatten a children object (typically specified as `props.children`) and
  * return an array with appropriately re-keyed children.
  *
- * See https://reactjs.org/docs/react-api.html#reactchildrentoarray
+ * See https://reactjs.org/docs/react-api.html#react.children.toarray
  */
 function toArray(children) {
   const result = [];
-  mapIntoWithKeyPrefixInternal(children, result, null, child => child);
+  mapIntoWithKeyPrefixInternal(
+    children,
+    result,
+    null,
+    emptyFunction.thatReturnsArgument,
+  );
   return result;
 }
 
@@ -374,7 +386,7 @@ function toArray(children) {
  * Returns the first child in a collection of children and verifies that there
  * is only one child in the collection.
  *
- * See https://reactjs.org/docs/react-api.html#reactchildrenonly
+ * See https://reactjs.org/docs/react-api.html#react.children.only
  *
  * The current implementation of this function assumes that a single child gets
  * passed without a wrapper, but the purpose of this helper function is to

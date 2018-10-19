@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2015-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -12,7 +12,7 @@
 const React = require('react');
 const ReactDOM = require('react-dom');
 
-function expectWarnings(tags, warnings = [], withoutStack = 0) {
+function expectWarnings(tags, warnings = []) {
   tags = [...tags];
   warnings = [...warnings];
 
@@ -28,9 +28,7 @@ function expectWarnings(tags, warnings = [], withoutStack = 0) {
     element = <Tag>{element}</Tag>;
   }
 
-  expect(() => ReactDOM.render(element, container)).toWarnDev(warnings, {
-    withoutStack,
-  });
+  expect(() => ReactDOM.render(element, container)).toWarnDev(warnings);
 }
 
 describe('validateDOMNesting', () => {
@@ -41,7 +39,6 @@ describe('validateDOMNesting', () => {
       [
         'render(): Rendering components directly into document.body is discouraged',
       ],
-      1,
     );
     expectWarnings(['div', 'a', 'object', 'a']);
     expectWarnings(['div', 'p', 'button', 'p']);
@@ -109,7 +106,6 @@ describe('validateDOMNesting', () => {
         'validateDOMNesting(...): <body> cannot appear as a child of <body>.\n' +
           '    in body (at **)',
       ],
-      1,
     );
     expectWarnings(
       ['svg', 'foreignObject', 'body', 'p'],

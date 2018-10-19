@@ -1,33 +1,48 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import {invokeGuardedCallbackAndCatchFirstError} from 'shared/ReactErrorUtils';
-import invariant from 'shared/invariant';
-import warningWithoutStack from 'shared/warningWithoutStack';
+import ReactErrorUtils from 'shared/ReactErrorUtils';
+import invariant from 'fbjs/lib/invariant';
+import warning from 'fbjs/lib/warning';
 
 export let getFiberCurrentPropsFromNode = null;
 export let getInstanceFromNode = null;
 export let getNodeFromInstance = null;
 
-export function setComponentTree(
-  getFiberCurrentPropsFromNodeImpl,
-  getInstanceFromNodeImpl,
-  getNodeFromInstanceImpl,
-) {
-  getFiberCurrentPropsFromNode = getFiberCurrentPropsFromNodeImpl;
-  getInstanceFromNode = getInstanceFromNodeImpl;
-  getNodeFromInstance = getNodeFromInstanceImpl;
-  if (__DEV__) {
-    warningWithoutStack(
-      getNodeFromInstance && getInstanceFromNode,
-      'EventPluginUtils.setComponentTree(...): Injected ' +
-        'module is missing getNodeFromInstance or getInstanceFromNode.',
-    );
-  }
+export const injection = {
+  injectComponentTree: function(Injected) {
+    ({
+      getFiberCurrentPropsFromNode,
+      getInstanceFromNode,
+      getNodeFromInstance,
+    } = Injected);
+    if (__DEV__) {
+      warning(
+        getNodeFromInstance && getInstanceFromNode,
+        'EventPluginUtils.injection.injectComponentTree(...): Injected ' +
+          'module is missing getNodeFromInstance or getInstanceFromNode.',
+      );
+    }
+  },
+};
+
+export function isEndish(topLevelType) {
+  return (
+    topLevelType === 'topMouseUp' ||
+    topLevelType === 'topTouchEnd' ||
+    topLevelType === 'topTouchCancel'
+  );
+}
+
+export function isMoveish(topLevelType) {
+  return topLevelType === 'topMouseMove' || topLevelType === 'topTouchMove';
+}
+export function isStartish(topLevelType) {
+  return topLevelType === 'topMouseDown' || topLevelType === 'topTouchStart';
 }
 
 let validateEventDispatches;
@@ -39,18 +54,14 @@ if (__DEV__) {
     const listenersIsArr = Array.isArray(dispatchListeners);
     const listenersLen = listenersIsArr
       ? dispatchListeners.length
-      : dispatchListeners
-        ? 1
-        : 0;
+      : dispatchListeners ? 1 : 0;
 
     const instancesIsArr = Array.isArray(dispatchInstances);
     const instancesLen = instancesIsArr
       ? dispatchInstances.length
-      : dispatchInstances
-        ? 1
-        : 0;
+      : dispatchInstances ? 1 : 0;
 
-    warningWithoutStack(
+    warning(
       instancesIsArr === listenersIsArr && instancesLen === listenersLen,
       'EventPluginUtils: Invalid `event`.',
     );
@@ -67,7 +78,12 @@ if (__DEV__) {
 function executeDispatch(event, simulated, listener, inst) {
   const type = event.type || 'unknown-event';
   event.currentTarget = getNodeFromInstance(inst);
-  invokeGuardedCallbackAndCatchFirstError(type, listener, undefined, event);
+  ReactErrorUtils.invokeGuardedCallbackAndCatchFirstError(
+    type,
+    listener,
+    undefined,
+    event,
+  );
   event.currentTarget = null;
 }
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -39,7 +39,7 @@ describe('ReactDOMTextComponent', () => {
       </div>,
       el,
     );
-    let nodes = filterOutComments(inst.childNodes);
+    let nodes = filterOutComments(ReactDOM.findDOMNode(inst).childNodes);
 
     let foo = nodes[1];
     let bar = nodes[2];
@@ -56,7 +56,7 @@ describe('ReactDOMTextComponent', () => {
     );
     // After the update, the text nodes should have stayed in place (as opposed
     // to getting unmounted and remounted)
-    nodes = filterOutComments(inst.childNodes);
+    nodes = filterOutComments(ReactDOM.findDOMNode(inst).childNodes);
     expect(nodes[1]).toBe(foo);
     expect(nodes[2]).toBe(bar);
     expect(foo.data).toBe('baz');
@@ -74,7 +74,8 @@ describe('ReactDOMTextComponent', () => {
       el,
     );
 
-    let childNodes = filterOutComments(inst.childNodes);
+    let container = ReactDOM.findDOMNode(inst);
+    let childNodes = filterOutComments(container.childNodes);
     let childDiv = childNodes[1];
 
     inst = ReactDOM.render(
@@ -85,7 +86,8 @@ describe('ReactDOMTextComponent', () => {
       </div>,
       el,
     );
-    childNodes = filterOutComments(inst.childNodes);
+    container = ReactDOM.findDOMNode(inst);
+    childNodes = filterOutComments(container.childNodes);
     expect(childNodes.length).toBe(1);
     expect(childNodes[0]).toBe(childDiv);
 
@@ -97,7 +99,8 @@ describe('ReactDOMTextComponent', () => {
       </div>,
       el,
     );
-    childNodes = filterOutComments(inst.childNodes);
+    container = ReactDOM.findDOMNode(inst);
+    childNodes = filterOutComments(container.childNodes);
     expect(childNodes.length).toBe(3);
     expect(childNodes[0].data).toBe('foo');
     expect(childNodes[1]).toBe(childDiv);
@@ -122,7 +125,8 @@ describe('ReactDOMTextComponent', () => {
       el,
     );
 
-    inst.normalize();
+    let container = ReactDOM.findDOMNode(inst);
+    container.normalize();
 
     inst = ReactDOM.render(
       <div>
@@ -134,7 +138,8 @@ describe('ReactDOMTextComponent', () => {
       </div>,
       el,
     );
-    expect(inst.textContent).toBe('barbazquxfoo');
+    container = ReactDOM.findDOMNode(inst);
+    expect(container.textContent).toBe('barbazquxfoo');
   });
 
   xit('can reconcile text merged by Node.normalize()', () => {
@@ -148,7 +153,8 @@ describe('ReactDOMTextComponent', () => {
       el,
     );
 
-    inst.normalize();
+    let container = ReactDOM.findDOMNode(inst);
+    container.normalize();
 
     inst = ReactDOM.render(
       <div>
@@ -158,7 +164,8 @@ describe('ReactDOMTextComponent', () => {
       </div>,
       el,
     );
-    expect(inst.textContent).toBe('barbazqux');
+    container = ReactDOM.findDOMNode(inst);
+    expect(container.textContent).toBe('barbazqux');
   });
 
   it('can reconcile text from pre-rendered markup', () => {
@@ -200,14 +207,15 @@ describe('ReactDOMTextComponent', () => {
       el,
     );
 
-    let childNodes = filterOutComments(inst.childNodes);
+    let container = ReactDOM.findDOMNode(inst);
+    let childNodes = filterOutComments(ReactDOM.findDOMNode(inst).childNodes);
     let textNode = childNodes[1];
     textNode.textContent = 'foo';
-    inst.insertBefore(
+    container.insertBefore(
       document.createTextNode('bar'),
       childNodes[1].nextSibling,
     );
-    inst.insertBefore(
+    container.insertBefore(
       document.createTextNode('baz'),
       childNodes[1].nextSibling,
     );
@@ -219,7 +227,8 @@ describe('ReactDOMTextComponent', () => {
       </div>,
       el,
     );
-    expect(inst.textContent).toBe('barbazqux');
+    container = ReactDOM.findDOMNode(inst);
+    expect(container.textContent).toBe('barbazqux');
   });
 
   xit('can reconcile text arbitrarily split into multiple nodes on some substitutions only', () => {
@@ -237,20 +246,21 @@ describe('ReactDOMTextComponent', () => {
       el,
     );
 
-    let childNodes = filterOutComments(inst.childNodes);
+    let container = ReactDOM.findDOMNode(inst);
+    let childNodes = filterOutComments(ReactDOM.findDOMNode(inst).childNodes);
     let textNode = childNodes[3];
     textNode.textContent = 'foo';
-    inst.insertBefore(
+    container.insertBefore(
       document.createTextNode('bar'),
       childNodes[3].nextSibling,
     );
-    inst.insertBefore(
+    container.insertBefore(
       document.createTextNode('baz'),
       childNodes[3].nextSibling,
     );
     let secondTextNode = childNodes[5];
     secondTextNode.textContent = 'bar';
-    inst.insertBefore(
+    container.insertBefore(
       document.createTextNode('foo'),
       childNodes[5].nextSibling,
     );
@@ -267,7 +277,8 @@ describe('ReactDOMTextComponent', () => {
       </div>,
       el,
     );
-    expect(inst.textContent).toBe('bazbarbazquxbarbazbar');
+    container = ReactDOM.findDOMNode(inst);
+    expect(container.textContent).toBe('bazbarbazquxbarbazbar');
   });
 
   xit('can unmount normalized text nodes', () => {

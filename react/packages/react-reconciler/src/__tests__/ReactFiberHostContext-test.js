@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -46,10 +46,11 @@ describe('ReactFiberHostContext', () => {
       now: function() {
         return 0;
       },
-      appendChildToContainer: function() {
-        return null;
+      mutation: {
+        appendChildToContainer: function() {
+          return null;
+        },
       },
-      supportsMutation: true,
     });
 
     const container = Renderer.createContainer(/* root: */ null);
@@ -94,10 +95,11 @@ describe('ReactFiberHostContext', () => {
       now: function() {
         return 0;
       },
-      appendChildToContainer: function() {
-        return null;
+      mutation: {
+        appendChildToContainer: function() {
+          return null;
+        },
       },
-      supportsMutation: true,
     });
 
     const container = Renderer.createContainer(rootContext);

@@ -1,12 +1,11 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2014-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import invariant from 'shared/invariant';
-import warningWithoutStack from 'shared/warningWithoutStack';
+import warning from 'fbjs/lib/warning';
 import {REACT_ELEMENT_TYPE} from 'shared/ReactSymbols';
 
 import ReactCurrentOwner from './ReactCurrentOwner';
@@ -50,7 +49,7 @@ function defineKeyPropWarningGetter(props, displayName) {
   const warnAboutAccessingKey = function() {
     if (!specialPropKeyWarningShown) {
       specialPropKeyWarningShown = true;
-      warningWithoutStack(
+      warning(
         false,
         '%s: `key` is not a prop. Trying to access it will result ' +
           'in `undefined` being returned. If you need to access the same ' +
@@ -71,7 +70,7 @@ function defineRefPropWarningGetter(props, displayName) {
   const warnAboutAccessingRef = function() {
     if (!specialPropRefWarningShown) {
       specialPropRefWarningShown = true;
-      warningWithoutStack(
+      warning(
         false,
         '%s: `ref` is not a prop. Trying to access it will result ' +
           'in `undefined` being returned. If you need to access the same ' +
@@ -229,15 +228,20 @@ export function createElement(type, config, children) {
   }
   if (__DEV__) {
     if (key || ref) {
-      const displayName =
-        typeof type === 'function'
-          ? type.displayName || type.name || 'Unknown'
-          : type;
-      if (key) {
-        defineKeyPropWarningGetter(props, displayName);
-      }
-      if (ref) {
-        defineRefPropWarningGetter(props, displayName);
+      if (
+        typeof props.$$typeof === 'undefined' ||
+        props.$$typeof !== REACT_ELEMENT_TYPE
+      ) {
+        const displayName =
+          typeof type === 'function'
+            ? type.displayName || type.name || 'Unknown'
+            : type;
+        if (key) {
+          defineKeyPropWarningGetter(props, displayName);
+        }
+        if (ref) {
+          defineRefPropWarningGetter(props, displayName);
+        }
       }
     }
   }
@@ -286,12 +290,6 @@ export function cloneAndReplaceKey(oldElement, newKey) {
  * See https://reactjs.org/docs/react-api.html#cloneelement
  */
 export function cloneElement(element, config, children) {
-  invariant(
-    !(element === null || element === undefined),
-    'React.cloneElement(...): The argument must be a React element, but you passed %s.',
-    element,
-  );
-
   let propName;
 
   // Original props are copied
@@ -360,7 +358,7 @@ export function cloneElement(element, config, children) {
  * Verifies the object is a ReactElement.
  * See https://reactjs.org/docs/react-api.html#isvalidelement
  * @param {?object} object
- * @return {boolean} True if `object` is a ReactElement.
+ * @return {boolean} True if `object` is a valid component.
  * @final
  */
 export function isValidElement(object) {

@@ -1,11 +1,11 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import invariant from 'shared/invariant';
+import invariant from 'fbjs/lib/invariant';
 
 const instanceCache = {};
 const instanceProps = {};
@@ -20,7 +20,12 @@ export function uncacheFiberNode(tag) {
 }
 
 function getInstanceFromTag(tag) {
-  return instanceCache[tag] || null;
+  if (typeof tag === 'number') {
+    return instanceCache[tag] || null;
+  } else {
+    // Fabric will invoke event emitters on a direct fiber reference
+    return tag;
+  }
 }
 
 function getTagFromInstance(inst) {

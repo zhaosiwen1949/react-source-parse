@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -43,22 +43,19 @@ describe('ReactComponentLifeCycle', () => {
     const container = document.createElement('div');
     expect(() =>
       ReactDOM.render(<MyComponent x={1} />, container),
-    ).toLowPriorityWarnDev(
-      [
-        'componentWillMount is deprecated and will be removed in the next major version. ' +
-          'Use componentDidMount instead. As a temporary workaround, ' +
-          'you can rename to UNSAFE_componentWillMount.' +
-          '\n\nPlease update the following components: MyComponent',
-        'componentWillReceiveProps is deprecated and will be removed in the next major version. ' +
-          'Use static getDerivedStateFromProps instead.' +
-          '\n\nPlease update the following components: MyComponent',
-        'componentWillUpdate is deprecated and will be removed in the next major version. ' +
-          'Use componentDidUpdate instead. As a temporary workaround, ' +
-          'you can rename to UNSAFE_componentWillUpdate.' +
-          '\n\nPlease update the following components: MyComponent',
-      ],
-      {withoutStack: true},
-    );
+    ).toLowPriorityWarnDev([
+      'componentWillMount is deprecated and will be removed in the next major version. ' +
+        'Use componentDidMount instead. As a temporary workaround, ' +
+        'you can rename to UNSAFE_componentWillMount.' +
+        '\n\nPlease update the following components: MyComponent',
+      'componentWillReceiveProps is deprecated and will be removed in the next major version. ' +
+        'Use static getDerivedStateFromProps instead.' +
+        '\n\nPlease update the following components: MyComponent',
+      'componentWillUpdate is deprecated and will be removed in the next major version. ' +
+        'Use componentDidUpdate instead. As a temporary workaround, ' +
+        'you can rename to UNSAFE_componentWillUpdate.' +
+        '\n\nPlease update the following components: MyComponent',
+    ]);
 
     // Dedupe check (update and instantiate new
     ReactDOM.render(<MyComponent x={2} />, container);
@@ -66,9 +63,28 @@ describe('ReactComponentLifeCycle', () => {
   });
 
   describe('react-lifecycles-compat', () => {
-    const {polyfill} = require('react-lifecycles-compat');
+    const polyfill = require('react-lifecycles-compat');
 
-    it('should not warn for components with polyfilled getDerivedStateFromProps', () => {
+    it('should not warn about deprecated cWM/cWRP for polyfilled components', () => {
+      class PolyfilledComponent extends React.Component {
+        state = {};
+        static getDerivedStateFromProps() {
+          return null;
+        }
+        render() {
+          return null;
+        }
+      }
+
+      polyfill(PolyfilledComponent);
+
+      const container = document.createElement('div');
+      ReactDOM.render(<PolyfilledComponent />, container);
+    });
+
+    it('should not warn about unsafe lifecycles within "strict" tree for polyfilled components', () => {
+      const {StrictMode} = React;
+
       class PolyfilledComponent extends React.Component {
         state = {};
         static getDerivedStateFromProps() {
@@ -83,31 +99,9 @@ describe('ReactComponentLifeCycle', () => {
 
       const container = document.createElement('div');
       ReactDOM.render(
-        <React.StrictMode>
+        <StrictMode>
           <PolyfilledComponent />
-        </React.StrictMode>,
-        container,
-      );
-    });
-
-    it('should not warn for components with polyfilled getSnapshotBeforeUpdate', () => {
-      class PolyfilledComponent extends React.Component {
-        getSnapshotBeforeUpdate() {
-          return null;
-        }
-        componentDidUpdate() {}
-        render() {
-          return null;
-        }
-      }
-
-      polyfill(PolyfilledComponent);
-
-      const container = document.createElement('div');
-      ReactDOM.render(
-        <React.StrictMode>
-          <PolyfilledComponent />
-        </React.StrictMode>,
+        </StrictMode>,
         container,
       );
     });

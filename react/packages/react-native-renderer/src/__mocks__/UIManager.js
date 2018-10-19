@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,7 +9,8 @@
 
 // Mock of the Native Hooks
 
-import invariant from 'shared/invariant';
+const ReactNativeTagHandles = require('../ReactNativeTagHandles').default;
+const invariant = require('fbjs/lib/invariant');
 
 // Map of viewTag -> {children: [childTag], parent: ?parentTag}
 const roots = [];
@@ -17,7 +18,7 @@ let views = new Map();
 
 function autoCreateRoot(tag) {
   // Seriously, this is how we distinguish roots in RN.
-  if (!views.has(tag) && tag % 10 === 1) {
+  if (!views.has(tag) && ReactNativeTagHandles.reactTagIsNativeTopRootID(tag)) {
     roots.push(tag);
     views.set(tag, {
       children: [],

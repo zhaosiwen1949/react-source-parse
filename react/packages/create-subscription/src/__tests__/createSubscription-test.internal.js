@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -264,6 +264,7 @@ describe('createSubscription', () => {
 
   it('should ignore values emitted by a new subscribable until the commit phase', () => {
     const log = [];
+    let parentInstance;
 
     function Child({value}) {
       ReactNoop.yield('Child: ' + value);
@@ -300,6 +301,8 @@ describe('createSubscription', () => {
       }
 
       render() {
+        parentInstance = this;
+
         return (
           <Subscription source={this.state.observed}>
             {(value = 'default') => {
@@ -328,8 +331,8 @@ describe('createSubscription', () => {
     observableB.next('b-2');
     observableB.next('b-3');
 
-    // Update again
-    ReactNoop.render(<Parent observed={observableA} />);
+    // Mimic a higher-priority interruption
+    parentInstance.setState({observed: observableA});
 
     // Flush everything and ensure that the correct subscribable is used
     // We expect the last emitted update to be rendered (because of the commit phase value check)
@@ -351,6 +354,7 @@ describe('createSubscription', () => {
 
   it('should not drop values emitted between updates', () => {
     const log = [];
+    let parentInstance;
 
     function Child({value}) {
       ReactNoop.yield('Child: ' + value);
@@ -387,6 +391,8 @@ describe('createSubscription', () => {
       }
 
       render() {
+        parentInstance = this;
+
         return (
           <Subscription source={this.state.observed}>
             {(value = 'default') => {
@@ -414,8 +420,8 @@ describe('createSubscription', () => {
     observableA.next('a-1');
     observableA.next('a-2');
 
-    // Update again
-    ReactNoop.render(<Parent observed={observableA} />);
+    // Mimic a higher-priority interruption
+    parentInstance.setState({observed: observableA});
 
     // Flush everything and ensure that the correct subscribable is used
     // We expect the new subscribable to finish rendering,
@@ -450,9 +456,7 @@ describe('createSubscription', () => {
           },
           () => null,
         );
-      }).toWarnDev('Subscription must specify a getCurrentValue function', {
-        withoutStack: true,
-      });
+      }).toWarnDev('Subscription must specify a getCurrentValue function');
     });
 
     it('should warn for invalid missing subscribe', () => {
@@ -463,9 +467,7 @@ describe('createSubscription', () => {
           },
           () => null,
         );
-      }).toWarnDev('Subscription must specify a subscribe function', {
-        withoutStack: true,
-      });
+      }).toWarnDev('Subscription must specify a subscribe function');
     });
 
     it('should warn if subscribe does not return an unsubscribe method', () => {

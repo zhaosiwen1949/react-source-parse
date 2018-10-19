@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -36,7 +36,6 @@ const {
   itThrowsWhenRendering,
   serverRender,
   streamRender,
-  clientCleanRender,
   clientRenderOnServerString,
 } = ReactDOMServerIntegrationUtils(initModules);
 
@@ -486,113 +485,14 @@ describe('ReactDOMServerIntegration', () => {
       expect(e.tagName).toBe('BUTTON');
     });
 
-    itRenders('a div with dangerouslySetInnerHTML number', async render => {
-      // Put dangerouslySetInnerHTML one level deeper because otherwise
-      // hydrating from a bad markup would cause a mismatch (since we don't
-      // patch dangerouslySetInnerHTML as text content).
-      const e = (await render(
-        <div>
-          <span dangerouslySetInnerHTML={{__html: 0}} />
-        </div>,
-      )).firstChild;
-      expect(e.childNodes.length).toBe(1);
-      expect(e.firstChild.nodeType).toBe(TEXT_NODE_TYPE);
-      expect(e.textContent).toBe('0');
-    });
-
-    itRenders('a div with dangerouslySetInnerHTML boolean', async render => {
-      // Put dangerouslySetInnerHTML one level deeper because otherwise
-      // hydrating from a bad markup would cause a mismatch (since we don't
-      // patch dangerouslySetInnerHTML as text content).
-      const e = (await render(
-        <div>
-          <span dangerouslySetInnerHTML={{__html: false}} />
-        </div>,
-      )).firstChild;
-      expect(e.childNodes.length).toBe(1);
-      expect(e.firstChild.nodeType).toBe(TEXT_NODE_TYPE);
-      expect(e.firstChild.data).toBe('false');
-    });
-
-    itRenders(
-      'a div with dangerouslySetInnerHTML text string',
-      async render => {
-        // Put dangerouslySetInnerHTML one level deeper because otherwise
-        // hydrating from a bad markup would cause a mismatch (since we don't
-        // patch dangerouslySetInnerHTML as text content).
-        const e = (await render(
-          <div>
-            <span dangerouslySetInnerHTML={{__html: 'hello'}} />
-          </div>,
-        )).firstChild;
-        expect(e.childNodes.length).toBe(1);
-        expect(e.firstChild.nodeType).toBe(TEXT_NODE_TYPE);
-        expect(e.textContent).toBe('hello');
-      },
-    );
-
-    itRenders(
-      'a div with dangerouslySetInnerHTML element string',
-      async render => {
-        const e = await render(
-          <div dangerouslySetInnerHTML={{__html: "<span id='child'/>"}} />,
-        );
-        expect(e.childNodes.length).toBe(1);
-        expect(e.firstChild.tagName).toBe('SPAN');
-        expect(e.firstChild.getAttribute('id')).toBe('child');
-        expect(e.firstChild.childNodes.length).toBe(0);
-      },
-    );
-
-    itRenders('a div with dangerouslySetInnerHTML object', async render => {
-      const obj = {
-        toString() {
-          return "<span id='child'/>";
-        },
-      };
-      const e = await render(<div dangerouslySetInnerHTML={{__html: obj}} />);
+    itRenders('a div with dangerouslySetInnerHTML', async render => {
+      const e = await render(
+        <div dangerouslySetInnerHTML={{__html: "<span id='child'/>"}} />,
+      );
       expect(e.childNodes.length).toBe(1);
       expect(e.firstChild.tagName).toBe('SPAN');
       expect(e.firstChild.getAttribute('id')).toBe('child');
       expect(e.firstChild.childNodes.length).toBe(0);
-    });
-
-    itRenders(
-      'a div with dangerouslySetInnerHTML set to null',
-      async render => {
-        const e = await render(
-          <div dangerouslySetInnerHTML={{__html: null}} />,
-        );
-        expect(e.childNodes.length).toBe(0);
-      },
-    );
-
-    itRenders(
-      'a div with dangerouslySetInnerHTML set to undefined',
-      async render => {
-        const e = await render(
-          <div dangerouslySetInnerHTML={{__html: undefined}} />,
-        );
-        expect(e.childNodes.length).toBe(0);
-      },
-    );
-
-    itRenders('a noscript with children', async render => {
-      const e = await render(
-        <noscript>
-          <div>Enable JavaScript to run this app.</div>
-        </noscript>,
-      );
-      if (render === clientCleanRender) {
-        // On the client we ignore the contents of a noscript
-        expect(e.childNodes.length).toBe(0);
-      } else {
-        // On the server or when hydrating the content should be correct
-        expect(e.childNodes.length).toBe(1);
-        expect(e.firstChild.textContent).toBe(
-          '<div>Enable JavaScript to run this app.</div>',
-        );
-      }
     });
 
     describe('newline-eating elements', function() {
@@ -623,8 +523,8 @@ describe('ReactDOMServerIntegration', () => {
       }
 
       itRenders('stateless components', async render => {
-        const FunctionComponent = () => <div>foo</div>;
-        checkFooDiv(await render(<FunctionComponent />));
+        const StatelessComponent = () => <div>foo</div>;
+        checkFooDiv(await render(<StatelessComponent />));
       });
 
       itRenders('ES6 class components', async render => {
@@ -985,7 +885,6 @@ describe('ReactDOMServerIntegration', () => {
               'components) but got: object. You likely forgot to export your ' +
               "component from the file it's defined in, or you might have mixed up " +
               'default and named imports.',
-            {withoutStack: true},
           );
           await render(EmptyComponent);
         },
@@ -1007,7 +906,6 @@ describe('ReactDOMServerIntegration', () => {
             'Warning: React.createElement: type is invalid -- expected a string ' +
               '(for built-in components) or a class/function (for composite ' +
               'components) but got: null.',
-            {withoutStack: true},
           );
           await render(NullComponent);
         },
@@ -1027,7 +925,6 @@ describe('ReactDOMServerIntegration', () => {
               'components) but got: undefined. You likely forgot to export your ' +
               "component from the file it's defined in, or you might have mixed up " +
               'default and named imports.',
-            {withoutStack: true},
           );
 
           await render(UndefinedComponent);

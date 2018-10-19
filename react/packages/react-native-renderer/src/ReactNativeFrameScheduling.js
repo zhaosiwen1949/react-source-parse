@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,7 +7,7 @@
  * @flow
  */
 
-import type {Deadline} from 'react-reconciler/src/ReactFiberScheduler';
+import type {Deadline} from 'react-reconciler';
 
 const hasNativePerformanceNow =
   typeof performance === 'object' && typeof performance.now === 'function';
@@ -43,19 +43,15 @@ function setTimeoutCallback() {
 // RN has a poor polyfill for requestIdleCallback so we aren't using it.
 // This implementation is only intended for short-term use anyway.
 // We also don't implement cancel functionality b'c Fiber doesn't currently need it.
-function scheduleDeferredCallback(
-  callback: Callback,
-  options?: {timeout: number},
-): number {
+function scheduleDeferredCallback(callback: Callback): number {
   // We assume only one callback is scheduled at a time b'c that's how Fiber works.
   scheduledCallback = callback;
-  const timeoutId = setTimeout(setTimeoutCallback, 1);
-  return (timeoutId: any); // Timeouts are always numbers on RN
+  return setTimeout(setTimeoutCallback, 1);
 }
 
 function cancelDeferredCallback(callbackID: number) {
   scheduledCallback = null;
-  clearTimeout((callbackID: any)); // Timeouts are always numbers on RN
+  clearTimeout(callbackID);
 }
 
 export {now, scheduleDeferredCallback, cancelDeferredCallback};

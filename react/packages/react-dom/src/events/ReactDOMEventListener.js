@@ -1,26 +1,19 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
- *
- * @flow
  */
-
-import type {AnyNativeEvent} from 'events/PluginModuleType';
-import type {Fiber} from 'react-reconciler/src/ReactFiber';
-import type {DOMTopLevelEventType} from 'events/TopLevelEventTypes';
 
 import {batchedUpdates, interactiveUpdates} from 'events/ReactGenericBatching';
 import {runExtractedEventsInBatch} from 'events/EventPluginHub';
 import {isFiberMounted} from 'react-reconciler/reflection';
-import {HostRoot} from 'shared/ReactWorkTags';
+import {HostRoot} from 'shared/ReactTypeOfWork';
 
 import {addEventBubbleListener, addEventCaptureListener} from './EventListener';
 import getEventTarget from './getEventTarget';
 import {getClosestInstanceFromNode} from '../client/ReactDOMComponentTree';
 import SimpleEventPlugin from './SimpleEventPlugin';
-import {getRawEventName} from './DOMTopLevelEventTypes';
 
 const {isInteractiveTopLevelEventType} = SimpleEventPlugin;
 
@@ -47,16 +40,7 @@ function findRootContainerNode(inst) {
 }
 
 // Used to store ancestor hierarchy in top level callback
-function getTopLevelCallbackBookKeeping(
-  topLevelType,
-  nativeEvent,
-  targetInst,
-): {
-  topLevelType: ?DOMTopLevelEventType,
-  nativeEvent: ?AnyNativeEvent,
-  targetInst: Fiber | null,
-  ancestors: Array<Fiber>,
-} {
+function getTopLevelCallbackBookKeeping(topLevelType, nativeEvent, targetInst) {
   if (callbackBookkeepingPool.length) {
     const instance = callbackBookkeepingPool.pop();
     instance.topLevelType = topLevelType;
@@ -117,7 +101,7 @@ function handleTopLevel(bookKeeping) {
 // TODO: can we stop exporting these?
 export let _enabled = true;
 
-export function setEnabled(enabled: ?boolean) {
+export function setEnabled(enabled) {
   _enabled = !!enabled;
 }
 
@@ -128,16 +112,14 @@ export function isEnabled() {
 /**
  * Traps top-level events by using event bubbling.
  *
- * @param {number} topLevelType Number from `TopLevelEventTypes`.
+ * @param {string} topLevelType Record from `BrowserEventConstants`.
+ * @param {string} handlerBaseName Event name (e.g. "click").
  * @param {object} element Element on which to attach listener.
  * @return {?object} An object with a remove function which will forcefully
  *                  remove the listener.
  * @internal
  */
-export function trapBubbledEvent(
-  topLevelType: DOMTopLevelEventType,
-  element: Document | Element,
-) {
+export function trapBubbledEvent(topLevelType, handlerBaseName, element) {
   if (!element) {
     return null;
   }
@@ -147,7 +129,7 @@ export function trapBubbledEvent(
 
   addEventBubbleListener(
     element,
-    getRawEventName(topLevelType),
+    handlerBaseName,
     // Check if interactive and wrap in interactiveUpdates
     dispatch.bind(null, topLevelType),
   );
@@ -156,16 +138,14 @@ export function trapBubbledEvent(
 /**
  * Traps a top-level event by using event capturing.
  *
- * @param {number} topLevelType Number from `TopLevelEventTypes`.
+ * @param {string} topLevelType Record from `BrowserEventConstants`.
+ * @param {string} handlerBaseName Event name (e.g. "click").
  * @param {object} element Element on which to attach listener.
  * @return {?object} An object with a remove function which will forcefully
  *                  remove the listener.
  * @internal
  */
-export function trapCapturedEvent(
-  topLevelType: DOMTopLevelEventType,
-  element: Document | Element,
-) {
+export function trapCapturedEvent(topLevelType, handlerBaseName, element) {
   if (!element) {
     return null;
   }
@@ -175,7 +155,7 @@ export function trapCapturedEvent(
 
   addEventCaptureListener(
     element,
-    getRawEventName(topLevelType),
+    handlerBaseName,
     // Check if interactive and wrap in interactiveUpdates
     dispatch.bind(null, topLevelType),
   );
@@ -185,10 +165,7 @@ function dispatchInteractiveEvent(topLevelType, nativeEvent) {
   interactiveUpdates(dispatchEvent, topLevelType, nativeEvent);
 }
 
-export function dispatchEvent(
-  topLevelType: DOMTopLevelEventType,
-  nativeEvent: AnyNativeEvent,
-) {
+export function dispatchEvent(topLevelType, nativeEvent) {
   if (!_enabled) {
     return;
   }

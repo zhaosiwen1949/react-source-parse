@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -17,13 +17,13 @@ import {
 // scheduled work and instead do synchronous work.
 
 // Defaults
-let _batchedUpdatesImpl = function(fn, bookkeeping) {
+let _batchedUpdates = function(fn, bookkeeping) {
   return fn(bookkeeping);
 };
-let _interactiveUpdatesImpl = function(fn, a, b) {
+let _interactiveUpdates = function(fn, a, b) {
   return fn(a, b);
 };
-let _flushInteractiveUpdatesImpl = function() {};
+let _flushInteractiveUpdates = function() {};
 
 let isBatching = false;
 export function batchedUpdates(fn, bookkeeping) {
@@ -34,7 +34,7 @@ export function batchedUpdates(fn, bookkeeping) {
   }
   isBatching = true;
   try {
-    return _batchedUpdatesImpl(fn, bookkeeping);
+    return _batchedUpdates(fn, bookkeeping);
   } finally {
     // Here we wait until all updates have propagated, which is important
     // when using controlled components within layers:
@@ -46,26 +46,24 @@ export function batchedUpdates(fn, bookkeeping) {
       // If a controlled event was fired, we may need to restore the state of
       // the DOM node back to the controlled value. This is necessary when React
       // bails out of the update without touching the DOM.
-      _flushInteractiveUpdatesImpl();
+      _flushInteractiveUpdates();
       restoreStateIfNeeded();
     }
   }
 }
 
 export function interactiveUpdates(fn, a, b) {
-  return _interactiveUpdatesImpl(fn, a, b);
+  return _interactiveUpdates(fn, a, b);
 }
 
 export function flushInteractiveUpdates() {
-  return _flushInteractiveUpdatesImpl();
+  return _flushInteractiveUpdates();
 }
 
-export function setBatchingImplementation(
-  batchedUpdatesImpl,
-  interactiveUpdatesImpl,
-  flushInteractiveUpdatesImpl,
-) {
-  _batchedUpdatesImpl = batchedUpdatesImpl;
-  _interactiveUpdatesImpl = interactiveUpdatesImpl;
-  _flushInteractiveUpdatesImpl = flushInteractiveUpdatesImpl;
-}
+export const injection = {
+  injectRenderer(renderer) {
+    _batchedUpdates = renderer.batchedUpdates;
+    _interactiveUpdates = renderer.interactiveUpdates;
+    _flushInteractiveUpdates = renderer.flushInteractiveUpdates;
+  },
+};

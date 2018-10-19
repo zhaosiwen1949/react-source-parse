@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,7 +10,7 @@ import {
   traverseTwoPhase,
   traverseEnterLeave,
 } from 'shared/ReactTreeTraversal';
-import warningWithoutStack from 'shared/warningWithoutStack';
+import warning from 'fbjs/lib/warning';
 
 import {getListener} from './EventPluginHub';
 import accumulateInto from './accumulateInto';
@@ -46,7 +46,7 @@ function listenerAtPhase(inst, event, propagationPhase: PropagationPhases) {
  */
 function accumulateDirectionalDispatches(inst, phase, event) {
   if (__DEV__) {
-    warningWithoutStack(inst, 'Dispatching inst must not be null');
+    warning(inst, 'Dispatching inst must not be null');
   }
   const listener = listenerAtPhase(inst, event, phase);
   if (listener) {

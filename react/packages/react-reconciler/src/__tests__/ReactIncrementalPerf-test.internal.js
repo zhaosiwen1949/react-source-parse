@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2016-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -12,6 +12,7 @@
 
 describe('ReactDebugFiberPerf', () => {
   let React;
+  let ReactCallReturn;
   let ReactNoop;
   let PropTypes;
 
@@ -115,12 +116,12 @@ describe('ReactDebugFiberPerf', () => {
     global.performance = createUserTimingPolyfill();
 
     require('shared/ReactFeatureFlags').enableUserTimingAPI = true;
-    require('shared/ReactFeatureFlags').enableProfilerTimer = false;
     require('shared/ReactFeatureFlags').replayFailedUnitOfWorkWithInvokeGuardedCallback = false;
 
     // Import after the polyfill is set up:
     React = require('react');
     ReactNoop = require('react-noop-renderer');
+    ReactCallReturn = require('react-call-return');
     PropTypes = require('prop-types');
   });
 
@@ -155,66 +156,6 @@ describe('ReactDebugFiberPerf', () => {
 
     ReactNoop.render(null);
     addComment('Unmount');
-    ReactNoop.flush();
-
-    expect(getFlameChart()).toMatchSnapshot();
-  });
-
-  it('properly displays the forwardRef component in measurements', () => {
-    const AnonymousForwardRef = React.forwardRef((props, ref) => (
-      <Child {...props} ref={ref} />
-    ));
-    const NamedForwardRef = React.forwardRef(function refForwarder(props, ref) {
-      return <Child {...props} ref={ref} />;
-    });
-    function notImportant(props, ref) {
-      return <Child {...props} ref={ref} />;
-    }
-    notImportant.displayName = 'OverriddenName';
-    const DisplayNamedForwardRef = React.forwardRef(notImportant);
-
-    ReactNoop.render(
-      <Parent>
-        <AnonymousForwardRef />
-        <NamedForwardRef />
-        <DisplayNamedForwardRef />
-      </Parent>,
-    );
-    addComment('Mount');
-    ReactNoop.flush();
-
-    expect(getFlameChart()).toMatchSnapshot();
-  });
-
-  it('does not include ConcurrentMode, StrictMode, or Profiler components in measurements', () => {
-    ReactNoop.render(
-      <React.unstable_Profiler id="test" onRender={jest.fn()}>
-        <React.StrictMode>
-          <Parent>
-            <React.unstable_ConcurrentMode>
-              <Child />
-            </React.unstable_ConcurrentMode>
-          </Parent>
-        </React.StrictMode>
-      </React.unstable_Profiler>,
-    );
-    addComment('Mount');
-    ReactNoop.flush();
-
-    expect(getFlameChart()).toMatchSnapshot();
-  });
-
-  it('does not include context provider or consumer in measurements', () => {
-    const {Consumer, Provider} = React.createContext(true);
-
-    ReactNoop.render(
-      <Provider value={false}>
-        <Parent>
-          <Consumer>{value => <Child value={value} />}</Consumer>
-        </Parent>
-      </Provider>,
-    );
-    addComment('Mount');
     ReactNoop.flush();
 
     expect(getFlameChart()).toMatchSnapshot();
@@ -314,15 +255,12 @@ describe('ReactDebugFiberPerf', () => {
       </Parent>,
     );
     addComment('Should not print a warning');
-    expect(ReactNoop.flush).toWarnDev(
-      [
-        'componentWillMount: Please update the following components ' +
-          'to use componentDidMount instead: NotCascading' +
-          '\n\ncomponentWillReceiveProps: Please update the following components ' +
-          'to use static getDerivedStateFromProps instead: NotCascading',
-      ],
-      {withoutStack: true},
-    );
+    expect(ReactNoop.flush).toWarnDev([
+      'componentWillMount: Please update the following components ' +
+        'to use componentDidMount instead: NotCascading' +
+        '\n\ncomponentWillReceiveProps: Please update the following components ' +
+        'to use static getDerivedStateFromProps instead: NotCascading',
+    ]);
     ReactNoop.render(
       <Parent>
         <NotCascading />
@@ -357,17 +295,12 @@ describe('ReactDebugFiberPerf', () => {
     ReactNoop.render(<AllLifecycles />);
     addComment('Mount');
     expect(ReactNoop.flush).toWarnDev(
-      [
-        'componentWillMount: Please update the following components ' +
-          'to use componentDidMount instead: AllLifecycles' +
-          '\n\ncomponentWillReceiveProps: Please update the following components ' +
-          'to use static getDerivedStateFromProps instead: AllLifecycles' +
-          '\n\ncomponentWillUpdate: Please update the following components ' +
-          'to use componentDidUpdate instead: AllLifecycles',
-        'Legacy context API has been detected within a strict-mode tree: \n\n' +
-          'Please update the following components: AllLifecycles',
-      ],
-      {withoutStack: true},
+      'componentWillMount: Please update the following components ' +
+        'to use componentDidMount instead: AllLifecycles' +
+        '\n\ncomponentWillReceiveProps: Please update the following components ' +
+        'to use static getDerivedStateFromProps instead: AllLifecycles' +
+        '\n\ncomponentWillUpdate: Please update the following components ' +
+        'to use componentDidUpdate instead: AllLifecycles',
     );
     ReactNoop.render(<AllLifecycles />);
     addComment('Update');
@@ -542,66 +475,57 @@ describe('ReactDebugFiberPerf', () => {
     expect(getFlameChart()).toMatchSnapshot();
   });
 
-  it('supports portals', () => {
-    const portalContainer = ReactNoop.getOrCreateRootContainer(
-      'portalContainer',
-    );
-    ReactNoop.render(
-      <Parent>
-        {ReactNoop.createPortal(<Child />, portalContainer, null)}
-      </Parent>,
-    );
-    ReactNoop.flush();
-    expect(getFlameChart()).toMatchSnapshot();
-  });
-
-  it('supports pure', () => {
-    const PureFoo = React.pure(function Foo() {
-      return <div />;
-    });
-    ReactNoop.render(
-      <Parent>
-        <PureFoo />
-      </Parent>,
-    );
-    ReactNoop.flush();
-    expect(getFlameChart()).toMatchSnapshot();
-  });
-
-  it('supports Suspense and lazy', async () => {
-    function Spinner() {
-      return <span />;
+  it('supports returns', () => {
+    function Continuation({isSame}) {
+      return <span prop={isSame ? 'foo==bar' : 'foo!=bar'} />;
     }
 
-    let resolve;
-    const LazyFoo = React.lazy(
-      () =>
-        new Promise(r => {
-          resolve = r;
-        }),
-    );
+    function CoChild({bar}) {
+      return ReactCallReturn.unstable_createReturn({
+        props: {
+          bar: bar,
+        },
+        continuation: Continuation,
+      });
+    }
 
-    ReactNoop.render(
-      <Parent>
-        <React.unstable_Suspense fallback={<Spinner />}>
-          <LazyFoo />
-        </React.unstable_Suspense>
-      </Parent>,
-    );
+    function Indirection() {
+      return [<CoChild key="a" bar={true} />, <CoChild key="b" bar={false} />];
+    }
+
+    function HandleReturns(props, returns) {
+      return returns.map((y, i) => (
+        <y.continuation key={i} isSame={props.foo === y.props.bar} />
+      ));
+    }
+
+    function CoParent(props) {
+      return ReactCallReturn.unstable_createCall(
+        props.children,
+        HandleReturns,
+        props,
+      );
+    }
+
+    function App() {
+      return (
+        <div>
+          <CoParent foo={true}>
+            <Indirection />
+          </CoParent>
+        </div>
+      );
+    }
+
+    ReactNoop.render(<App />);
     ReactNoop.flush();
     expect(getFlameChart()).toMatchSnapshot();
+  });
 
-    resolve(function Foo() {
-      return <div />;
-    });
-    await LazyFoo;
-
+  it('supports portals', () => {
+    const noopContainer = {children: []};
     ReactNoop.render(
-      <Parent>
-        <React.unstable_Suspense>
-          <LazyFoo />
-        </React.unstable_Suspense>
-      </Parent>,
+      <Parent>{ReactNoop.createPortal(<Child />, noopContainer, null)}</Parent>,
     );
     ReactNoop.flush();
     expect(getFlameChart()).toMatchSnapshot();

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2014-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -14,7 +14,7 @@ let ReactErrorUtils;
 describe('ReactErrorUtils', () => {
   beforeEach(() => {
     // TODO: can we express this test with only public API?
-    ReactErrorUtils = require('shared/ReactErrorUtils');
+    ReactErrorUtils = require('shared/ReactErrorUtils').default;
   });
 
   it(`it should rethrow caught errors`, () => {
@@ -128,9 +128,9 @@ describe('ReactErrorUtils', () => {
   });
 
   it('handles nested errors in separate renderers', () => {
-    const ReactErrorUtils1 = require('shared/ReactErrorUtils');
+    const ReactErrorUtils1 = require('shared/ReactErrorUtils').default;
     jest.resetModules();
-    const ReactErrorUtils2 = require('shared/ReactErrorUtils');
+    const ReactErrorUtils2 = require('shared/ReactErrorUtils').default;
     expect(ReactErrorUtils1).not.toEqual(ReactErrorUtils2);
 
     let ops = [];
@@ -178,18 +178,19 @@ describe('ReactErrorUtils', () => {
     const ops = [];
     jest.resetModules();
     jest.mock(
-      'shared/invokeGuardedCallbackImpl',
+      'shared/invokeGuardedCallback',
       () =>
         function invokeGuardedCallback(name, func, context, a) {
           ops.push(a);
           try {
             func.call(context, a);
           } catch (error) {
-            this.onError(error);
+            this._hasCaughtError = true;
+            this._caughtError = error;
           }
         },
     );
-    ReactErrorUtils = require('shared/ReactErrorUtils');
+    ReactErrorUtils = require('shared/ReactErrorUtils').default;
 
     try {
       const err = new Error('foo');
@@ -205,7 +206,7 @@ describe('ReactErrorUtils', () => {
       expect(() => ReactErrorUtils.rethrowCaughtError()).toThrow(err);
       expect(ops).toEqual(['somearg']);
     } finally {
-      jest.unmock('shared/invokeGuardedCallbackImpl');
+      jest.unmock('shared/invokeGuardedCallback');
     }
   });
 });

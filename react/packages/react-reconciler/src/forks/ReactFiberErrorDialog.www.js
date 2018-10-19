@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,7 +9,7 @@
 
 import type {CapturedError} from '../ReactCapturedValue';
 
-import invariant from 'shared/invariant';
+import invariant from 'fbjs/lib/invariant';
 
 // Provided by www
 const ReactFiberErrorDialogWWW = require('ReactFiberErrorDialog');

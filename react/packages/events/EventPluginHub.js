@@ -1,13 +1,13 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  * @flow
  */
 
-import {rethrowCaughtError} from 'shared/ReactErrorUtils';
-import invariant from 'shared/invariant';
+import ReactErrorUtils from 'shared/ReactErrorUtils';
+import invariant from 'fbjs/lib/invariant';
 
 import {
   injectEventPluginOrder,
@@ -25,7 +25,6 @@ import type {PluginModule} from './PluginModuleType';
 import type {ReactSyntheticEvent} from './ReactSyntheticEventType';
 import type {Fiber} from 'react-reconciler/src/ReactFiber';
 import type {AnyNativeEvent} from './PluginModuleType';
-import type {TopLevelType} from './TopLevelEventTypes';
 
 /**
  * Internal queue of events that have accumulated their dispatches and are
@@ -166,8 +165,8 @@ export function getListener(inst: Fiber, registrationName: string) {
  * @internal
  */
 function extractEvents(
-  topLevelType: TopLevelType,
-  targetInst: null | Fiber,
+  topLevelType: string,
+  targetInst: Fiber,
   nativeEvent: AnyNativeEvent,
   nativeEventTarget: EventTarget,
 ): Array<ReactSyntheticEvent> | ReactSyntheticEvent | null {
@@ -224,12 +223,12 @@ export function runEventsInBatch(
       'an event queue. Support for this has not yet been implemented.',
   );
   // This would be a good time to rethrow if any of the event handlers threw.
-  rethrowCaughtError();
+  ReactErrorUtils.rethrowCaughtError();
 }
 
 export function runExtractedEventsInBatch(
-  topLevelType: TopLevelType,
-  targetInst: null | Fiber,
+  topLevelType: string,
+  targetInst: Fiber,
   nativeEvent: AnyNativeEvent,
   nativeEventTarget: EventTarget,
 ) {

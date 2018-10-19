@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -12,65 +12,32 @@
 describe('SimpleEventPlugin', function() {
   let React;
   let ReactDOM;
+  let ReactTestUtils;
   let ReactFeatureFlags;
 
   let onClick;
-  let container;
 
   function expectClickThru(element) {
-    element.click();
-    expect(onClick).toHaveBeenCalledTimes(1);
+    ReactTestUtils.SimulateNative.click(ReactDOM.findDOMNode(element));
+    expect(onClick.mock.calls.length).toBe(1);
   }
 
   function expectNoClickThru(element) {
-    element.click();
-    expect(onClick).toHaveBeenCalledTimes(0);
+    ReactTestUtils.SimulateNative.click(ReactDOM.findDOMNode(element));
+    expect(onClick.mock.calls.length).toBe(0);
   }
 
   function mounted(element) {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    element = ReactDOM.render(element, container);
+    element = ReactTestUtils.renderIntoDocument(element);
     return element;
   }
 
   beforeEach(function() {
-    // TODO pull this into helper method, reduce repetition.
-    // mock the browser APIs which are used in schedule:
-    // - requestAnimationFrame should pass the DOMHighResTimeStamp argument
-    // - calling 'window.postMessage' should actually fire postmessage handlers
-    global.requestAnimationFrame = function(cb) {
-      return setTimeout(() => {
-        cb(Date.now());
-      });
-    };
-    const originalAddEventListener = global.addEventListener;
-    let postMessageCallback;
-    global.addEventListener = function(eventName, callback, useCapture) {
-      if (eventName === 'message') {
-        postMessageCallback = callback;
-      } else {
-        originalAddEventListener(eventName, callback, useCapture);
-      }
-    };
-    global.postMessage = function(messageKey, targetOrigin) {
-      const postMessageEvent = {source: window, data: messageKey};
-      if (postMessageCallback) {
-        postMessageCallback(postMessageEvent);
-      }
-    };
-    jest.resetModules();
     React = require('react');
     ReactDOM = require('react-dom');
+    ReactTestUtils = require('react-dom/test-utils');
 
     onClick = jest.fn();
-  });
-
-  afterEach(() => {
-    if (container && document.body.contains(container)) {
-      document.body.removeChild(container);
-      container = null;
-    }
   });
 
   it('A non-interactive tags click when disabled', function() {
@@ -79,64 +46,65 @@ describe('SimpleEventPlugin', function() {
   });
 
   it('A non-interactive tags clicks bubble when disabled', function() {
-    const element = mounted(
+    const element = ReactTestUtils.renderIntoDocument(
       <div onClick={onClick}>
         <div />
       </div>,
     );
-    const child = element.firstChild;
-    child.click();
-    expect(onClick).toHaveBeenCalledTimes(1);
+    const child = ReactDOM.findDOMNode(element).firstChild;
+
+    ReactTestUtils.SimulateNative.click(child);
+    expect(onClick.mock.calls.length).toBe(1);
   });
 
   it('does not register a click when clicking a child of a disabled element', function() {
-    const element = mounted(
+    const element = ReactTestUtils.renderIntoDocument(
       <button onClick={onClick} disabled={true}>
         <span />
       </button>,
     );
-    const child = element.querySelector('span');
+    const child = ReactDOM.findDOMNode(element).querySelector('span');
 
-    child.click();
-    expect(onClick).toHaveBeenCalledTimes(0);
+    ReactTestUtils.SimulateNative.click(child);
+    expect(onClick.mock.calls.length).toBe(0);
   });
 
   it('triggers click events for children of disabled elements', function() {
-    const element = mounted(
+    const element = ReactTestUtils.renderIntoDocument(
       <button disabled={true}>
         <span onClick={onClick} />
       </button>,
     );
-    const child = element.querySelector('span');
+    const child = ReactDOM.findDOMNode(element).querySelector('span');
 
-    child.click();
-    expect(onClick).toHaveBeenCalledTimes(1);
+    ReactTestUtils.SimulateNative.click(child);
+    expect(onClick.mock.calls.length).toBe(1);
   });
 
   it('triggers parent captured click events when target is a child of a disabled elements', function() {
-    const element = mounted(
+    const element = ReactTestUtils.renderIntoDocument(
       <div onClickCapture={onClick}>
         <button disabled={true}>
           <span />
         </button>
       </div>,
     );
-    const child = element.querySelector('span');
+    const child = ReactDOM.findDOMNode(element).querySelector('span');
 
-    child.click();
-    expect(onClick).toHaveBeenCalledTimes(1);
+    ReactTestUtils.SimulateNative.click(child);
+    expect(onClick.mock.calls.length).toBe(1);
   });
 
   it('triggers captured click events for children of disabled elements', function() {
-    const element = mounted(
+    const element = ReactTestUtils.renderIntoDocument(
       <button disabled={true}>
         <span onClickCapture={onClick} />
       </button>,
     );
-    const child = element.querySelector('span');
+    const child = ReactDOM.findDOMNode(element).querySelector('span');
 
-    child.click();
-    expect(onClick).toHaveBeenCalledTimes(1);
+    ReactTestUtils.SimulateNative.click(child);
+    expect(onClick.mock.calls.length).toBe(1);
   });
 
   ['button', 'input', 'select', 'textarea'].forEach(function(tagName) {
@@ -159,8 +127,7 @@ describe('SimpleEventPlugin', function() {
       });
 
       it('should forward clicks when it becomes not disabled', () => {
-        container = document.createElement('div');
-        document.body.appendChild(container);
+        const container = document.createElement('div');
         let element = ReactDOM.render(
           React.createElement(tagName, {onClick: onClick, disabled: true}),
           container,
@@ -173,8 +140,7 @@ describe('SimpleEventPlugin', function() {
       });
 
       it('should not forward clicks when it becomes disabled', () => {
-        container = document.createElement('div');
-        document.body.appendChild(container);
+        const container = document.createElement('div');
         let element = ReactDOM.render(
           React.createElement(tagName, {onClick: onClick}),
           container,
@@ -187,8 +153,7 @@ describe('SimpleEventPlugin', function() {
       });
 
       it('should work correctly if the listener is changed', () => {
-        container = document.createElement('div');
-        document.body.appendChild(container);
+        const container = document.createElement('div');
         let element = ReactDOM.render(
           React.createElement(tagName, {onClick: onClick, disabled: true}),
           container,
@@ -203,7 +168,7 @@ describe('SimpleEventPlugin', function() {
   });
 
   it('batches updates that occur as a result of a nested event dispatch', () => {
-    container = document.createElement('div');
+    const container = document.createElement('div');
     document.body.appendChild(container);
 
     let ops = [];
@@ -256,12 +221,13 @@ describe('SimpleEventPlugin', function() {
     beforeEach(() => {
       jest.resetModules();
       ReactFeatureFlags = require('shared/ReactFeatureFlags');
+      ReactFeatureFlags.enableAsyncSubtreeAPI = true;
       ReactFeatureFlags.debugRenderPhaseSideEffectsForStrictMode = false;
       ReactDOM = require('react-dom');
     });
 
     it('flushes pending interactive work before extracting event handler', () => {
-      container = document.createElement('div');
+      const container = document.createElement('div');
       const root = ReactDOM.unstable_createRoot(container);
       document.body.appendChild(container);
 
@@ -341,7 +307,7 @@ describe('SimpleEventPlugin', function() {
     });
 
     it('end result of many interactive updates is deterministic', () => {
-      container = document.createElement('div');
+      const container = document.createElement('div');
       const root = ReactDOM.unstable_createRoot(container);
       document.body.appendChild(container);
 
@@ -396,7 +362,7 @@ describe('SimpleEventPlugin', function() {
     });
 
     it('flushes lowest pending interactive priority', () => {
-      container = document.createElement('div');
+      const container = document.createElement('div');
       document.body.appendChild(container);
 
       let button;
@@ -426,9 +392,9 @@ describe('SimpleEventPlugin', function() {
                 // Intentionally not using the updater form here
                 () => this.setState({highPriCount: this.state.highPriCount + 1})
               }>
-              <React.unstable_ConcurrentMode>
+              <React.unstable_AsyncMode>
                 <Button highPriCount={this.state.highPriCount} />
-              </React.unstable_ConcurrentMode>
+              </React.unstable_AsyncMode>
             </div>
           );
         }
@@ -469,7 +435,7 @@ describe('SimpleEventPlugin', function() {
     // See http://www.quirksmode.org/blog/archives/2010/09/click_event_del.html
 
     it('does not add a local click to interactive elements', function() {
-      container = document.createElement('div');
+      const container = document.createElement('div');
 
       ReactDOM.render(<button onClick={onClick} />, container);
 
@@ -477,11 +443,11 @@ describe('SimpleEventPlugin', function() {
 
       node.dispatchEvent(new MouseEvent('click'));
 
-      expect(onClick).toHaveBeenCalledTimes(0);
+      expect(onClick.mock.calls.length).toBe(0);
     });
 
     it('adds a local click listener to non-interactive elements', function() {
-      container = document.createElement('div');
+      const container = document.createElement('div');
 
       ReactDOM.render(<div onClick={onClick} />, container);
 
@@ -489,7 +455,7 @@ describe('SimpleEventPlugin', function() {
 
       node.dispatchEvent(new MouseEvent('click'));
 
-      expect(onClick).toHaveBeenCalledTimes(0);
+      expect(onClick.mock.calls.length).toBe(0);
     });
   });
 });

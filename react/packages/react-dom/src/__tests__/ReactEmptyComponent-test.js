@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2014-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -24,7 +24,7 @@ describe('ReactEmptyComponent', () => {
     ReactDOM = require('react-dom');
     ReactTestUtils = require('react-dom/test-utils');
 
-    log = jest.fn();
+    log = jasmine.createSpy();
 
     TogglingComponent = class extends React.Component {
       state = {component: this.props.firstComponent};
@@ -91,17 +91,11 @@ describe('ReactEmptyComponent', () => {
     ReactTestUtils.renderIntoDocument(instance1);
     ReactTestUtils.renderIntoDocument(instance2);
 
-    expect(log).toHaveBeenCalledTimes(4);
-    expect(log).toHaveBeenNthCalledWith(1, null);
-    expect(log).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({tagName: 'DIV'}),
-    );
-    expect(log).toHaveBeenNthCalledWith(
-      3,
-      expect.objectContaining({tagName: 'DIV'}),
-    );
-    expect(log).toHaveBeenNthCalledWith(4, null);
+    expect(log.calls.count()).toBe(4);
+    expect(log.calls.argsFor(0)[0]).toBe(null);
+    expect(log.calls.argsFor(1)[0].tagName).toBe('DIV');
+    expect(log.calls.argsFor(2)[0].tagName).toBe('DIV');
+    expect(log.calls.argsFor(3)[0]).toBe(null);
   });
 
   it('should be able to switch in a list of children', () => {
@@ -117,22 +111,13 @@ describe('ReactEmptyComponent', () => {
       </div>,
     );
 
-    expect(log).toHaveBeenCalledTimes(6);
-    expect(log).toHaveBeenNthCalledWith(1, null);
-    expect(log).toHaveBeenNthCalledWith(2, null);
-    expect(log).toHaveBeenNthCalledWith(3, null);
-    expect(log).toHaveBeenNthCalledWith(
-      4,
-      expect.objectContaining({tagName: 'DIV'}),
-    );
-    expect(log).toHaveBeenNthCalledWith(
-      5,
-      expect.objectContaining({tagName: 'DIV'}),
-    );
-    expect(log).toHaveBeenNthCalledWith(
-      6,
-      expect.objectContaining({tagName: 'DIV'}),
-    );
+    expect(log.calls.count()).toBe(6);
+    expect(log.calls.argsFor(0)[0]).toBe(null);
+    expect(log.calls.argsFor(1)[0]).toBe(null);
+    expect(log.calls.argsFor(2)[0]).toBe(null);
+    expect(log.calls.argsFor(3)[0].tagName).toBe('DIV');
+    expect(log.calls.argsFor(4)[0].tagName).toBe('DIV');
+    expect(log.calls.argsFor(5)[0].tagName).toBe('DIV');
   });
 
   it('should distinguish between a script placeholder and an actual script tag', () => {
@@ -150,17 +135,11 @@ describe('ReactEmptyComponent', () => {
       ReactTestUtils.renderIntoDocument(instance2);
     }).not.toThrow();
 
-    expect(log).toHaveBeenCalledTimes(4);
-    expect(log).toHaveBeenNthCalledWith(1, null);
-    expect(log).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({tagName: 'SCRIPT'}),
-    );
-    expect(log).toHaveBeenNthCalledWith(
-      3,
-      expect.objectContaining({tagName: 'SCRIPT'}),
-    );
-    expect(log).toHaveBeenNthCalledWith(4, null);
+    expect(log.calls.count()).toBe(4);
+    expect(log.calls.argsFor(0)[0]).toBe(null);
+    expect(log.calls.argsFor(1)[0].tagName).toBe('SCRIPT');
+    expect(log.calls.argsFor(2)[0].tagName).toBe('SCRIPT');
+    expect(log.calls.argsFor(3)[0]).toBe(null);
   });
 
   it(
@@ -193,17 +172,11 @@ describe('ReactEmptyComponent', () => {
         ReactTestUtils.renderIntoDocument(instance2);
       }).not.toThrow();
 
-      expect(log).toHaveBeenCalledTimes(4);
-      expect(log).toHaveBeenNthCalledWith(
-        1,
-        expect.objectContaining({tagName: 'DIV'}),
-      );
-      expect(log).toHaveBeenNthCalledWith(2, null);
-      expect(log).toHaveBeenNthCalledWith(3, null);
-      expect(log).toHaveBeenNthCalledWith(
-        4,
-        expect.objectContaining({tagName: 'DIV'}),
-      );
+      expect(log.calls.count()).toBe(4);
+      expect(log.calls.argsFor(0)[0].tagName).toBe('DIV');
+      expect(log.calls.argsFor(1)[0]).toBe(null);
+      expect(log.calls.argsFor(2)[0]).toBe(null);
+      expect(log.calls.argsFor(3)[0].tagName).toBe('DIV');
     },
   );
 

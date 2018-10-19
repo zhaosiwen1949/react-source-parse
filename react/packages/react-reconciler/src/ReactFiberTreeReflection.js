@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,23 +9,20 @@
 
 import type {Fiber} from 'react-reconciler/src/ReactFiber';
 
-import invariant from 'shared/invariant';
-import warningWithoutStack from 'shared/warningWithoutStack';
+import invariant from 'fbjs/lib/invariant';
+import warning from 'fbjs/lib/warning';
 
 import * as ReactInstanceMap from 'shared/ReactInstanceMap';
-import ReactSharedInternals from 'shared/ReactSharedInternals';
+import {ReactCurrentOwner} from 'shared/ReactGlobalSharedState';
 import getComponentName from 'shared/getComponentName';
 import {
   ClassComponent,
-  ClassComponentLazy,
   HostComponent,
   HostRoot,
   HostPortal,
   HostText,
-} from 'shared/ReactWorkTags';
-import {NoEffect, Placement} from 'shared/ReactSideEffectTags';
-
-const ReactCurrentOwner = ReactSharedInternals.ReactCurrentOwner;
+} from 'shared/ReactTypeOfWork';
+import {NoEffect, Placement} from 'shared/ReactTypeOfSideEffect';
 
 const MOUNTING = 1;
 const MOUNTED = 2;
@@ -67,20 +64,17 @@ export function isFiberMounted(fiber: Fiber): boolean {
 export function isMounted(component: React$Component<any, any>): boolean {
   if (__DEV__) {
     const owner = (ReactCurrentOwner.current: any);
-    if (
-      owner !== null &&
-      (owner.tag === ClassComponent || owner.tag === ClassComponentLazy)
-    ) {
+    if (owner !== null && owner.tag === ClassComponent) {
       const ownerFiber: Fiber = owner;
       const instance = ownerFiber.stateNode;
-      warningWithoutStack(
+      warning(
         instance._warnedAboutRefsInRender,
         '%s is accessing isMounted inside its render() function. ' +
           'render() should be a pure function of props and state. It should ' +
           'never access something that requires stale data from the previous ' +
           'render, such as refs. Move this logic to componentDidMount and ' +
           'componentDidUpdate instead.',
-        getComponentName(ownerFiber.type) || 'A component',
+        getComponentName(ownerFiber) || 'A component',
       );
       instance._warnedAboutRefsInRender = true;
     }

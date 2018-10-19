@@ -1,11 +1,11 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import {canUseDOM} from 'shared/ExecutionEnvironment';
+import ExecutionEnvironment from 'fbjs/lib/ExecutionEnvironment';
 
 /**
  * Generate a mapping of standard vendor prefixes using the defined style property and event name.
@@ -20,6 +20,8 @@ function makePrefixMap(styleProp, eventName) {
   prefixes[styleProp.toLowerCase()] = eventName.toLowerCase();
   prefixes['Webkit' + styleProp] = 'webkit' + eventName;
   prefixes['Moz' + styleProp] = 'moz' + eventName;
+  prefixes['ms' + styleProp] = 'MS' + eventName;
+  prefixes['O' + styleProp] = 'o' + eventName.toLowerCase();
 
   return prefixes;
 }
@@ -47,7 +49,7 @@ let style = {};
 /**
  * Bootstrap if a DOM exists.
  */
-if (canUseDOM) {
+if (ExecutionEnvironment.canUseDOM) {
   style = document.createElement('div').style;
 
   // On some platforms, in particular some releases of Android 4.x,

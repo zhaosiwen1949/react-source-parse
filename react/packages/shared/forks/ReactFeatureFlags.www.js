@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -12,13 +12,20 @@ import typeof * as FeatureFlagsShimType from './ReactFeatureFlags.www';
 
 // Re-export dynamic flags from the www version.
 export const {
+  enableGetDerivedStateFromCatch,
   debugRenderPhaseSideEffects,
   debugRenderPhaseSideEffectsForStrictMode,
-  enableSuspenseServerRenderer,
-  replayFailedUnitOfWorkWithInvokeGuardedCallback,
   warnAboutDeprecatedLifecycles,
-  disableInputAttributeSyncing,
+  replayFailedUnitOfWorkWithInvokeGuardedCallback,
+  alwaysUseRequestIdleCallbackPolyfill,
 } = require('ReactFeatureFlags');
+
+// The rest of the flags are static for better dead code elimination.
+
+// The www bundles only use the mutating reconciler.
+export const enableMutatingReconciler = true;
+export const enableNoopReconciler = false;
+export const enablePersistentReconciler = false;
 
 // In www, we have experimental support for gathering data
 // from User Timing API calls in production. By default, we
@@ -27,9 +34,6 @@ export const {
 // experimental FB-only export, we call performance.mark/measure
 // as long as there is more than a single listener.
 export let enableUserTimingAPI = __DEV__;
-
-export const enableProfilerTimer = __PROFILE__;
-export const enableSchedulerTracing = __PROFILE__;
 
 let refCount = 0;
 export function addUserTimingListener() {

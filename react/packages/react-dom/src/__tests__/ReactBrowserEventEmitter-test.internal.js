@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -42,8 +42,6 @@ let getListener;
 let putListener;
 let deleteAllListeners;
 
-let container;
-
 function registerSimpleTestHandler() {
   putListener(CHILD, ON_CLICK_KEY, LISTENER);
   const listener = getListener(CHILD, ON_CLICK_KEY);
@@ -65,8 +63,7 @@ describe('ReactBrowserEventEmitter', () => {
     ReactBrowserEventEmitter = require('../events/ReactBrowserEventEmitter');
     ReactTestUtils = require('react-dom/test-utils');
 
-    container = document.createElement('div');
-    document.body.appendChild(container);
+    const container = document.createElement('div');
 
     let GRANDPARENT_PROPS = {};
     let PARENT_PROPS = {};
@@ -132,11 +129,6 @@ describe('ReactBrowserEventEmitter', () => {
     idCallOrder = [];
   });
 
-  afterEach(() => {
-    document.body.removeChild(container);
-    container = null;
-  });
-
   it('should store a listener correctly', () => {
     registerSimpleTestHandler();
     const listener = getListener(CHILD, ON_CLICK_KEY);
@@ -158,25 +150,25 @@ describe('ReactBrowserEventEmitter', () => {
 
   it('should invoke a simple handler registered on a node', () => {
     registerSimpleTestHandler();
-    CHILD.click();
-    expect(LISTENER).toHaveBeenCalledTimes(1);
+    ReactTestUtils.Simulate.click(CHILD);
+    expect(LISTENER.mock.calls.length).toBe(1);
   });
 
   it('should not invoke handlers if ReactBrowserEventEmitter is disabled', () => {
     registerSimpleTestHandler();
     ReactBrowserEventEmitter.setEnabled(false);
-    CHILD.click();
-    expect(LISTENER).toHaveBeenCalledTimes(0);
+    ReactTestUtils.SimulateNative.click(CHILD);
+    expect(LISTENER.mock.calls.length).toBe(0);
     ReactBrowserEventEmitter.setEnabled(true);
-    CHILD.click();
-    expect(LISTENER).toHaveBeenCalledTimes(1);
+    ReactTestUtils.SimulateNative.click(CHILD);
+    expect(LISTENER.mock.calls.length).toBe(1);
   });
 
   it('should bubble simply', () => {
     putListener(CHILD, ON_CLICK_KEY, recordID.bind(null, CHILD));
     putListener(PARENT, ON_CLICK_KEY, recordID.bind(null, PARENT));
     putListener(GRANDPARENT, ON_CLICK_KEY, recordID.bind(null, GRANDPARENT));
-    CHILD.click();
+    ReactTestUtils.Simulate.click(CHILD);
     expect(idCallOrder.length).toBe(3);
     expect(idCallOrder[0]).toBe(CHILD);
     expect(idCallOrder[1]).toBe(PARENT);
@@ -187,7 +179,7 @@ describe('ReactBrowserEventEmitter', () => {
     putListener(GRANDPARENT, ON_CLICK_KEY, recordID.bind(null, 'GRANDPARENT'));
     putListener(PARENT, ON_CLICK_KEY, recordID.bind(null, 'PARENT'));
     putListener(CHILD, ON_CLICK_KEY, recordID.bind(null, 'CHILD'));
-    CHILD.click();
+    ReactTestUtils.Simulate.click(CHILD);
     expect(idCallOrder).toEqual(['CHILD', 'PARENT', 'GRANDPARENT']);
 
     idCallOrder = [];
@@ -199,7 +191,7 @@ describe('ReactBrowserEventEmitter', () => {
       recordID.bind(null, 'UPDATED_GRANDPARENT'),
     );
 
-    CHILD.click();
+    ReactTestUtils.Simulate.click(CHILD);
     expect(idCallOrder).toEqual(['CHILD', 'PARENT', 'UPDATED_GRANDPARENT']);
   });
 
@@ -232,7 +224,7 @@ describe('ReactBrowserEventEmitter', () => {
       recordID(GRANDPARENT);
       expect(event.currentTarget).toBe(GRANDPARENT);
     });
-    CHILD.click();
+    ReactTestUtils.Simulate.click(CHILD);
     expect(idCallOrder.length).toBe(3);
     expect(idCallOrder[0]).toBe(CHILD);
     expect(idCallOrder[1]).toBe(PARENT);
@@ -247,7 +239,7 @@ describe('ReactBrowserEventEmitter', () => {
       recordIDAndStopPropagation.bind(null, PARENT),
     );
     putListener(GRANDPARENT, ON_CLICK_KEY, recordID.bind(null, GRANDPARENT));
-    CHILD.click();
+    ReactTestUtils.Simulate.click(CHILD);
     expect(idCallOrder.length).toBe(2);
     expect(idCallOrder[0]).toBe(CHILD);
     expect(idCallOrder[1]).toBe(PARENT);
@@ -262,7 +254,7 @@ describe('ReactBrowserEventEmitter', () => {
       e.isPropagationStopped = () => true;
     });
     putListener(GRANDPARENT, ON_CLICK_KEY, recordID.bind(null, GRANDPARENT));
-    CHILD.click();
+    ReactTestUtils.Simulate.click(CHILD);
     expect(idCallOrder.length).toBe(2);
     expect(idCallOrder[0]).toBe(CHILD);
     expect(idCallOrder[1]).toBe(PARENT);
@@ -276,7 +268,7 @@ describe('ReactBrowserEventEmitter', () => {
     );
     putListener(PARENT, ON_CLICK_KEY, recordID.bind(null, PARENT));
     putListener(GRANDPARENT, ON_CLICK_KEY, recordID.bind(null, GRANDPARENT));
-    CHILD.click();
+    ReactTestUtils.Simulate.click(CHILD);
     expect(idCallOrder.length).toBe(1);
     expect(idCallOrder[0]).toBe(CHILD);
   });
@@ -285,7 +277,7 @@ describe('ReactBrowserEventEmitter', () => {
     putListener(CHILD, ON_CLICK_KEY, recordIDAndReturnFalse.bind(null, CHILD));
     putListener(PARENT, ON_CLICK_KEY, recordID.bind(null, PARENT));
     putListener(GRANDPARENT, ON_CLICK_KEY, recordID.bind(null, GRANDPARENT));
-    CHILD.click();
+    ReactTestUtils.Simulate.click(CHILD);
     expect(idCallOrder.length).toBe(3);
     expect(idCallOrder[0]).toBe(CHILD);
     expect(idCallOrder[1]).toBe(PARENT);
@@ -308,8 +300,8 @@ describe('ReactBrowserEventEmitter', () => {
     };
     putListener(CHILD, ON_CLICK_KEY, handleChildClick);
     putListener(PARENT, ON_CLICK_KEY, handleParentClick);
-    CHILD.click();
-    expect(handleParentClick).toHaveBeenCalledTimes(1);
+    ReactTestUtils.Simulate.click(CHILD);
+    expect(handleParentClick.mock.calls.length).toBe(1);
   });
 
   it('should not invoke newly inserted handlers while bubbling', () => {
@@ -318,8 +310,8 @@ describe('ReactBrowserEventEmitter', () => {
       putListener(PARENT, ON_CLICK_KEY, handleParentClick);
     };
     putListener(CHILD, ON_CLICK_KEY, handleChildClick);
-    CHILD.click();
-    expect(handleParentClick).toHaveBeenCalledTimes(0);
+    ReactTestUtils.Simulate.click(CHILD);
+    expect(handleParentClick.mock.calls.length).toBe(0);
   });
 
   it('should have mouse enter simulated by test utils', () => {
@@ -333,7 +325,7 @@ describe('ReactBrowserEventEmitter', () => {
     spyOnDevAndProd(EventTarget.prototype, 'addEventListener');
     ReactBrowserEventEmitter.listenTo(ON_CLICK_KEY, document);
     ReactBrowserEventEmitter.listenTo(ON_CLICK_KEY, document);
-    expect(EventTarget.prototype.addEventListener).toHaveBeenCalledTimes(1);
+    expect(EventTarget.prototype.addEventListener.calls.count()).toBe(1);
   });
 
   it('should work with event plugins without dependencies', () => {

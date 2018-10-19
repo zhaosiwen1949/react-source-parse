@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -32,32 +32,6 @@ describe('ChangeEventPlugin', () => {
   let container;
 
   beforeEach(() => {
-    ReactFeatureFlags = require('shared/ReactFeatureFlags');
-    // TODO pull this into helper method, reduce repetition.
-    // mock the browser APIs which are used in schedule:
-    // - requestAnimationFrame should pass the DOMHighResTimeStamp argument
-    // - calling 'window.postMessage' should actually fire postmessage handlers
-    global.requestAnimationFrame = function(cb) {
-      return setTimeout(() => {
-        cb(Date.now());
-      });
-    };
-    const originalAddEventListener = global.addEventListener;
-    let postMessageCallback;
-    global.addEventListener = function(eventName, callback, useCapture) {
-      if (eventName === 'message') {
-        postMessageCallback = callback;
-      } else {
-        originalAddEventListener(eventName, callback, useCapture);
-      }
-    };
-    global.postMessage = function(messageKey, targetOrigin) {
-      const postMessageEvent = {source: window, data: messageKey};
-      if (postMessageCallback) {
-        postMessageCallback(postMessageEvent);
-      }
-    };
-    jest.resetModules();
     container = document.createElement('div');
     document.body.appendChild(container);
   });
@@ -88,14 +62,8 @@ describe('ChangeEventPlugin', () => {
     );
     node.dispatchEvent(new Event('input', {bubbles: true, cancelable: true}));
     node.dispatchEvent(new Event('change', {bubbles: true, cancelable: true}));
-
-    if (ReactFeatureFlags.disableInputAttributeSyncing) {
-      // TODO: figure out why. This might be a bug.
-      expect(called).toBe(1);
-    } else {
-      // There should be no React change events because the value stayed the same.
-      expect(called).toBe(0);
-    }
+    // There should be no React change events because the value stayed the same.
+    expect(called).toBe(0);
   });
 
   it('should consider initial checkbox checked=true to be current', () => {
@@ -482,6 +450,8 @@ describe('ChangeEventPlugin', () => {
     beforeEach(() => {
       jest.resetModules();
       ReactFeatureFlags = require('shared/ReactFeatureFlags');
+      ReactFeatureFlags.enableAsyncSubtreeAPI = true;
+      ReactFeatureFlags.debugRenderPhaseSideEffectsForStrictMode = false;
       ReactFeatureFlags.debugRenderPhaseSideEffectsForStrictMode = false;
       ReactDOM = require('react-dom');
     });

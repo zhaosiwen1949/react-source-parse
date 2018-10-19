@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -15,7 +15,6 @@ describe('ReactDOMOption', () => {
   let ReactTestUtils;
 
   beforeEach(() => {
-    jest.resetModules();
     React = require('react');
     ReactDOM = require('react-dom');
     ReactTestUtils = require('react-dom/test-utils');
@@ -27,7 +26,8 @@ describe('ReactDOMOption', () => {
         {1} {'foo'}
       </option>
     );
-    const node = ReactTestUtils.renderIntoDocument(stub);
+    stub = ReactTestUtils.renderIntoDocument(stub);
+    const node = ReactDOM.findDOMNode(stub);
 
     expect(node.innerHTML).toBe('1 foo');
   });
@@ -42,10 +42,11 @@ describe('ReactDOMOption', () => {
     expect(() => {
       node = ReactTestUtils.renderIntoDocument(el);
     }).toWarnDev(
-      'Only strings and numbers are supported as <option> children.\n' +
+      '<div> cannot appear as a child of <option>.\n' +
+        '    in div (at **)\n' +
         '    in option (at **)',
     );
-    expect(node.innerHTML).toBe('1 [object Object] 2');
+    expect(node.innerHTML).toBe('1  2');
     ReactTestUtils.renderIntoDocument(el);
   });
 
@@ -58,85 +59,17 @@ describe('ReactDOMOption', () => {
         {undefined} {2}
       </option>
     );
-    const node = ReactTestUtils.renderIntoDocument(stub);
+    stub = ReactTestUtils.renderIntoDocument(stub);
 
+    const node = ReactDOM.findDOMNode(stub);
     expect(node.innerHTML).toBe('1  2');
-  });
-
-  it('should throw on object children', () => {
-    expect(() => {
-      ReactTestUtils.renderIntoDocument(<option>{{}}</option>);
-    }).toThrow('Objects are not valid as a React child');
-    expect(() => {
-      ReactTestUtils.renderIntoDocument(<option>{[{}]}</option>);
-    }).toThrow('Objects are not valid as a React child');
-    expect(() => {
-      ReactTestUtils.renderIntoDocument(
-        <option>
-          {{}}
-          <span />
-        </option>,
-      );
-    }).toThrow('Objects are not valid as a React child');
-    expect(() => {
-      ReactTestUtils.renderIntoDocument(
-        <option>
-          {'1'}
-          {{}}
-          {2}
-        </option>,
-      );
-    }).toThrow('Objects are not valid as a React child');
-  });
-
-  it('should support element-ish child', () => {
-    // This is similar to <fbt>.
-    // It's important that we toString it.
-    let obj = {
-      $$typeof: Symbol.for('react.element'),
-      type: props => props.content,
-      ref: null,
-      key: null,
-      props: {
-        content: 'hello',
-      },
-      toString() {
-        return this.props.content;
-      },
-    };
-
-    let node = ReactTestUtils.renderIntoDocument(<option>{obj}</option>);
-    expect(node.innerHTML).toBe('hello');
-
-    node = ReactTestUtils.renderIntoDocument(<option>{[obj]}</option>);
-    expect(node.innerHTML).toBe('hello');
-
-    expect(() => {
-      node = ReactTestUtils.renderIntoDocument(
-        <option>
-          {obj}
-          <span />
-        </option>,
-      );
-    }).toWarnDev(
-      'Only strings and numbers are supported as <option> children.',
-    );
-    expect(node.innerHTML).toBe('hello[object Object]');
-
-    node = ReactTestUtils.renderIntoDocument(
-      <option>
-        {'1'}
-        {obj}
-        {2}
-      </option>,
-    );
-    expect(node.innerHTML).toBe('1hello2');
   });
 
   it('should be able to use dangerouslySetInnerHTML on option', () => {
     let stub = <option dangerouslySetInnerHTML={{__html: 'foobar'}} />;
-    const node = ReactTestUtils.renderIntoDocument(stub);
+    stub = ReactTestUtils.renderIntoDocument(stub);
 
+    const node = ReactDOM.findDOMNode(stub);
     expect(node.innerHTML).toBe('foobar');
   });
 
@@ -162,7 +95,8 @@ describe('ReactDOMOption', () => {
     );
     const options = stub.props.children;
     const container = document.createElement('div');
-    const node = ReactDOM.render(stub, container);
+    stub = ReactDOM.render(stub, container);
+    const node = ReactDOM.findDOMNode(stub);
 
     expect(node.selectedIndex).toBe(1);
 

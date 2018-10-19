@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,73 +9,59 @@
 
 'use strict';
 
-let React;
-let ReactDOM;
-let ReactDOMServer;
-let ReactTestUtils;
+let React = require('react');
+let ReactDOM = require('react-dom');
+const ReactTestUtils = require('react-dom/test-utils');
 
 describe('ReactDOM', () => {
-  beforeEach(() => {
-    jest.resetModules();
-    React = require('react');
-    ReactDOM = require('react-dom');
-    ReactDOMServer = require('react-dom/server');
-    ReactTestUtils = require('react-dom/test-utils');
-  });
-
+  // TODO: uncomment this test once we can run in phantom, which
+  // supports real submit events.
+  /*
   it('should bubble onSubmit', function() {
-    const container = document.createElement('div');
-
-    let count = 0;
-    let buttonRef;
-
-    function Parent() {
-      return (
-        <div
-          onSubmit={event => {
-            event.preventDefault();
-            count++;
-          }}>
-          <Child />
-        </div>
-      );
-    }
-
-    function Child() {
-      return (
-        <form>
-          <input type="submit" ref={button => (buttonRef = button)} />
-        </form>
-      );
-    }
-
-    document.body.appendChild(container);
-    try {
-      ReactDOM.render(<Parent />, container);
-      buttonRef.click();
-      expect(count).toBe(1);
-    } finally {
-      document.body.removeChild(container);
-    }
+    const count = 0;
+    const form;
+    const Parent = React.createClass({
+      handleSubmit: function() {
+        count++;
+        return false;
+      },
+      render: function() {
+        return <Child />;
+      }
+    });
+    const Child = React.createClass({
+      render: function() {
+        return <form><input type="submit" value="Submit" /></form>;
+      },
+      componentDidMount: function() {
+        form = ReactDOM.findDOMNode(this);
+      }
+    });
+    const instance = ReactTestUtils.renderIntoDocument(<Parent />);
+    form.submit();
+    expect(count).toEqual(1);
   });
+  */
 
   it('allows a DOM element to be used with a string', () => {
     const element = React.createElement('div', {className: 'foo'});
-    const node = ReactTestUtils.renderIntoDocument(element);
-    expect(node.tagName).toBe('DIV');
+    const instance = ReactTestUtils.renderIntoDocument(element);
+    expect(ReactDOM.findDOMNode(instance).tagName).toBe('DIV');
   });
 
   it('should allow children to be passed as an argument', () => {
-    const argNode = ReactTestUtils.renderIntoDocument(
+    const argDiv = ReactTestUtils.renderIntoDocument(
       React.createElement('div', null, 'child'),
     );
+    const argNode = ReactDOM.findDOMNode(argDiv);
     expect(argNode.innerHTML).toBe('child');
   });
 
   it('should overwrite props.children with children argument', () => {
-    const conflictNode = ReactTestUtils.renderIntoDocument(
+    const conflictDiv = ReactTestUtils.renderIntoDocument(
       React.createElement('div', {children: 'fakechild'}, 'child'),
     );
+    const conflictNode = ReactDOM.findDOMNode(conflictDiv);
     expect(conflictNode.innerHTML).toBe('child');
   });
 
@@ -117,7 +103,8 @@ describe('ReactDOM', () => {
         <div key="theBird" className="bird" />,
       </div>,
     );
-    const dog = myDiv.childNodes[0];
+    const root = ReactDOM.findDOMNode(myDiv);
+    const dog = root.childNodes[0];
     expect(dog.className).toBe('bigdog');
   });
 
@@ -255,37 +242,34 @@ describe('ReactDOM', () => {
     const log = [];
     const container = document.createElement('div');
     document.body.appendChild(container);
-    try {
-      ReactDOM.render(<A showTwo={false} />, container);
-      input.focus();
+    ReactDOM.render(<A showTwo={false} />, container);
+    input.focus();
 
-      // When the second input is added, let's simulate losing focus, which is
-      // something that could happen when manipulating DOM nodes (but is hard to
-      // deterministically force without relying intensely on React DOM
-      // implementation details)
-      const div = container.firstChild;
-      ['appendChild', 'insertBefore'].forEach(name => {
-        const mutator = div[name];
-        div[name] = function() {
-          if (input) {
-            input.blur();
-            expect(document.activeElement.tagName).toBe('BODY');
-            log.push('input2 inserted');
-          }
-          return mutator.apply(this, arguments);
-        };
-      });
+    // When the second input is added, let's simulate losing focus, which is
+    // something that could happen when manipulating DOM nodes (but is hard to
+    // deterministically force without relying intensely on React DOM
+    // implementation details)
+    const div = container.firstChild;
+    ['appendChild', 'insertBefore'].forEach(name => {
+      const mutator = div[name];
+      div[name] = function() {
+        if (input) {
+          input.blur();
+          expect(document.activeElement.tagName).toBe('BODY');
+          log.push('input2 inserted');
+        }
+        return mutator.apply(this, arguments);
+      };
+    });
 
-      expect(document.activeElement.id).toBe('one');
-      ReactDOM.render(<A showTwo={true} />, container);
-      // input2 gets added, which causes input to get blurred. Then
-      // componentDidUpdate focuses input2 and that should make it down to here,
-      // not get overwritten by focus restoration.
-      expect(document.activeElement.id).toBe('two');
-      expect(log).toEqual(['input2 inserted', 'input2 focused']);
-    } finally {
-      document.body.removeChild(container);
-    }
+    expect(document.activeElement.id).toBe('one');
+    ReactDOM.render(<A showTwo={true} />, container);
+    // input2 gets added, which causes input to get blurred. Then
+    // componentDidUpdate focuses input2 and that should make it down to here,
+    // not get overwritten by focus restoration.
+    expect(document.activeElement.id).toBe('two');
+    expect(log).toEqual(['input2 inserted', 'input2 focused']);
+    document.body.removeChild(container);
   });
 
   it('calls focus() on autoFocus elements after they have been mounted to the DOM', () => {
@@ -324,9 +308,20 @@ describe('ReactDOM', () => {
   it("shouldn't fire duplicate event handler while handling other nested dispatch", () => {
     const actual = [];
 
+    function click(node) {
+      const fakeNativeEvent = function() {};
+      fakeNativeEvent.target = node;
+      fakeNativeEvent.path = [node, container];
+      ReactTestUtils.simulateNativeEventOnNode(
+        'topClick',
+        node,
+        fakeNativeEvent,
+      );
+    }
+
     class Wrapper extends React.Component {
       componentDidMount() {
-        this.ref1.click();
+        click(this.ref1);
       }
 
       render() {
@@ -335,7 +330,7 @@ describe('ReactDOM', () => {
             <div
               onClick={() => {
                 actual.push('1st node clicked');
-                this.ref2.click();
+                click(this.ref2);
               }}
               ref={ref => (this.ref1 = ref)}
             />
@@ -351,18 +346,13 @@ describe('ReactDOM', () => {
     }
 
     const container = document.createElement('div');
-    document.body.appendChild(container);
-    try {
-      ReactDOM.render(<Wrapper />, container);
+    ReactDOM.render(<Wrapper />, container);
 
-      const expected = [
-        '1st node clicked',
-        "2nd node clicked imperatively from 1st's handler",
-      ];
-      expect(actual).toEqual(expected);
-    } finally {
-      document.body.removeChild(container);
-    }
+    const expected = [
+      '1st node clicked',
+      "2nd node clicked imperatively from 1st's handler",
+    ];
+    expect(actual).toEqual(expected);
   });
 
   it('should not crash with devtools installed', () => {
@@ -384,26 +374,6 @@ describe('ReactDOM', () => {
       ReactDOM.render(<Component />, document.createElement('container'));
     } finally {
       delete global.__REACT_DEVTOOLS_GLOBAL_HOOK__;
-    }
-  });
-
-  it('should not crash calling findDOMNode inside a function component', () => {
-    const container = document.createElement('div');
-
-    class Component extends React.Component {
-      render() {
-        return <div />;
-      }
-    }
-
-    const instance = ReactTestUtils.renderIntoDocument(<Component />);
-    const App = () => {
-      ReactDOM.findDOMNode(instance);
-      return <div />;
-    };
-
-    if (__DEV__) {
-      ReactDOM.render(<App />, container);
     }
   });
 
@@ -448,81 +418,5 @@ describe('ReactDOM', () => {
       // Don't break other tests.
       Object.defineProperty(global, 'document', documentDescriptor);
     }
-  });
-
-  it('warns when requestAnimationFrame is not polyfilled', () => {
-    const previousRAF = global.requestAnimationFrame;
-    try {
-      delete global.requestAnimationFrame;
-      jest.resetModules();
-      spyOnDevAndProd(console, 'error');
-      require('react-dom');
-      expect(console.error.calls.count()).toEqual(1);
-      expect(console.error.calls.argsFor(0)[0]).toMatch(
-        "This browser doesn't support requestAnimationFrame.",
-      );
-    } finally {
-      global.requestAnimationFrame = previousRAF;
-    }
-  });
-
-  it('reports stacks with re-entrant renderToString() calls on the client', () => {
-    function Child2(props) {
-      return <span ariaTypo3="no">{props.children}</span>;
-    }
-
-    function App2() {
-      return (
-        <Child2>
-          {ReactDOMServer.renderToString(<blink ariaTypo2="no" />)}
-        </Child2>
-      );
-    }
-
-    function Child() {
-      return (
-        <span ariaTypo4="no">{ReactDOMServer.renderToString(<App2 />)}</span>
-      );
-    }
-
-    function ServerEntry() {
-      return ReactDOMServer.renderToString(<Child />);
-    }
-
-    function App() {
-      return (
-        <div>
-          <span ariaTypo="no" />
-          <ServerEntry />
-          <font ariaTypo5="no" />
-        </div>
-      );
-    }
-
-    const container = document.createElement('div');
-    expect(() => ReactDOM.render(<App />, container)).toWarnDev([
-      // ReactDOM(App > div > span)
-      'Invalid ARIA attribute `ariaTypo`. ARIA attributes follow the pattern aria-* and must be lowercase.\n' +
-        '    in span (at **)\n' +
-        '    in div (at **)\n' +
-        '    in App (at **)',
-      // ReactDOM(App > div > ServerEntry) >>> ReactDOMServer(Child) >>> ReactDOMServer(App2) >>> ReactDOMServer(blink)
-      'Invalid ARIA attribute `ariaTypo2`. ARIA attributes follow the pattern aria-* and must be lowercase.\n' +
-        '    in blink (at **)',
-      // ReactDOM(App > div > ServerEntry) >>> ReactDOMServer(Child) >>> ReactDOMServer(App2 > Child2 > span)
-      'Invalid ARIA attribute `ariaTypo3`. ARIA attributes follow the pattern aria-* and must be lowercase.\n' +
-        '    in span (at **)\n' +
-        '    in Child2 (at **)\n' +
-        '    in App2 (at **)',
-      // ReactDOM(App > div > ServerEntry) >>> ReactDOMServer(Child > span)
-      'Invalid ARIA attribute `ariaTypo4`. ARIA attributes follow the pattern aria-* and must be lowercase.\n' +
-        '    in span (at **)\n' +
-        '    in Child (at **)',
-      // ReactDOM(App > div > font)
-      'Invalid ARIA attribute `ariaTypo5`. ARIA attributes follow the pattern aria-* and must be lowercase.\n' +
-        '    in font (at **)\n' +
-        '    in div (at **)\n' +
-        '    in App (at **)',
-    ]);
   });
 });

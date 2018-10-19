@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -68,8 +68,7 @@ type ComponentLifeCycle =
    * Mounted components have a DOM node representation and are capable of
    * receiving new props.
    */
-  | 'MOUNTED'
-  /**
+  | 'MOUNTED' /**
    * Unmounted components are inactive and cannot receive new props.
    */
   | 'UNMOUNTED';
@@ -198,27 +197,6 @@ describe('ReactComponentLifeCycle', () => {
     }).not.toThrow();
   });
 
-  it("warns if setting 'this.state = props'", () => {
-    class StatefulComponent extends React.Component {
-      constructor(props, context) {
-        super(props, context);
-        this.state = props;
-      }
-      render() {
-        return <div />;
-      }
-    }
-
-    expect(() => {
-      ReactTestUtils.renderIntoDocument(<StatefulComponent />);
-    }).toWarnDev(
-      'StatefulComponent: It is not recommended to assign props directly to state ' +
-        "because updates to props won't be reflected in state. " +
-        'In most cases, it is better to use props directly.',
-      {withoutStack: true},
-    );
-  });
-
   it('should not allow update state inside of getInitialState', () => {
     class StatefulComponent extends React.Component {
       constructor(props, context) {
@@ -236,11 +214,10 @@ describe('ReactComponentLifeCycle', () => {
     expect(() => {
       ReactTestUtils.renderIntoDocument(<StatefulComponent />);
     }).toWarnDev(
-      "Warning: Can't call setState on a component that is not yet mounted. " +
-        'This is a no-op, but it might indicate a bug in your application. ' +
-        'Instead, assign to `this.state` directly or define a `state = {};` ' +
-        'class property with the desired state in the StatefulComponent component.',
-      {withoutStack: true},
+      'Warning: setState(...): Can only update a mounted or ' +
+        'mounting component. This usually means you called setState() on an ' +
+        'unmounted component. This is a no-op.\n\nPlease check the code for the ' +
+        'StatefulComponent component.',
     );
 
     // Check deduplication; (no extra warnings should be logged).
@@ -271,9 +248,7 @@ describe('ReactComponentLifeCycle', () => {
     expect(() => {
       const instance = ReactTestUtils.renderIntoDocument(element);
       expect(instance._isMounted()).toBeTruthy();
-    }).toWarnDev('Component is accessing isMounted inside its render()', {
-      withoutStack: true,
-    });
+    }).toWarnDev('Component is accessing isMounted inside its render()');
   });
 
   it('should correctly determine if a null component is mounted', () => {
@@ -300,9 +275,7 @@ describe('ReactComponentLifeCycle', () => {
     expect(() => {
       const instance = ReactTestUtils.renderIntoDocument(element);
       expect(instance._isMounted()).toBeTruthy();
-    }).toWarnDev('Component is accessing isMounted inside its render()', {
-      withoutStack: true,
-    });
+    }).toWarnDev('Component is accessing isMounted inside its render()');
   });
 
   it('isMounted should return false when unmounted', () => {
@@ -340,9 +313,7 @@ describe('ReactComponentLifeCycle', () => {
 
     expect(() => {
       ReactTestUtils.renderIntoDocument(<Component />);
-    }).toWarnDev('Component is accessing findDOMNode inside its render()', {
-      withoutStack: true,
-    });
+    }).toWarnDev('Component is accessing findDOMNode inside its render()');
   });
 
   it('should carry through each of the phases of setup', () => {
@@ -408,7 +379,6 @@ describe('ReactComponentLifeCycle', () => {
       instance = ReactDOM.render(<LifeCycleComponent />, container);
     }).toWarnDev(
       'LifeCycleComponent is accessing isMounted inside its render() function',
-      {withoutStack: true},
     );
 
     // getInitialState
@@ -704,7 +674,6 @@ describe('ReactComponentLifeCycle', () => {
     const container = document.createElement('div');
     expect(() => ReactDOM.render(<Component />, container)).toWarnDev(
       'Unsafe legacy lifecycles will not be called for components using new component APIs.',
-      {withoutStack: true},
     );
   });
 
@@ -732,7 +701,6 @@ describe('ReactComponentLifeCycle', () => {
     const container = document.createElement('div');
     expect(() => ReactDOM.render(<Component value={1} />, container)).toWarnDev(
       'Unsafe legacy lifecycles will not be called for components using new component APIs.',
-      {withoutStack: true},
     );
     ReactDOM.render(<Component value={2} />, container);
   });
@@ -760,7 +728,6 @@ describe('ReactComponentLifeCycle', () => {
     const container = document.createElement('div');
     expect(() => ReactDOM.render(<Component value={1} />, container)).toWarnDev(
       'Unsafe legacy lifecycles will not be called for components using new component APIs.',
-      {withoutStack: true},
     );
     ReactDOM.render(<Component value={2} />, container);
   });
@@ -789,7 +756,6 @@ describe('ReactComponentLifeCycle', () => {
         '  componentWillUpdate\n\n' +
         'The above lifecycles should be removed. Learn more about this warning here:\n' +
         'https://fb.me/react-async-component-lifecycle-hooks',
-      {withoutStack: true},
     );
 
     class WillMount extends React.Component {
@@ -809,7 +775,6 @@ describe('ReactComponentLifeCycle', () => {
         '  UNSAFE_componentWillMount\n\n' +
         'The above lifecycles should be removed. Learn more about this warning here:\n' +
         'https://fb.me/react-async-component-lifecycle-hooks',
-      {withoutStack: true},
     );
 
     class WillMountAndUpdate extends React.Component {
@@ -831,7 +796,6 @@ describe('ReactComponentLifeCycle', () => {
         '  UNSAFE_componentWillUpdate\n\n' +
         'The above lifecycles should be removed. Learn more about this warning here:\n' +
         'https://fb.me/react-async-component-lifecycle-hooks',
-      {withoutStack: true},
     );
 
     class WillReceiveProps extends React.Component {
@@ -851,7 +815,6 @@ describe('ReactComponentLifeCycle', () => {
         '  componentWillReceiveProps\n\n' +
         'The above lifecycles should be removed. Learn more about this warning here:\n' +
         'https://fb.me/react-async-component-lifecycle-hooks',
-      {withoutStack: true},
     );
   });
 
@@ -878,7 +841,6 @@ describe('ReactComponentLifeCycle', () => {
         '  componentWillUpdate\n\n' +
         'The above lifecycles should be removed. Learn more about this warning here:\n' +
         'https://fb.me/react-async-component-lifecycle-hooks',
-      {withoutStack: true},
     );
 
     class WillMount extends React.Component {
@@ -897,7 +859,6 @@ describe('ReactComponentLifeCycle', () => {
         '  UNSAFE_componentWillMount\n\n' +
         'The above lifecycles should be removed. Learn more about this warning here:\n' +
         'https://fb.me/react-async-component-lifecycle-hooks',
-      {withoutStack: true},
     );
 
     class WillMountAndUpdate extends React.Component {
@@ -918,7 +879,6 @@ describe('ReactComponentLifeCycle', () => {
         '  UNSAFE_componentWillUpdate\n\n' +
         'The above lifecycles should be removed. Learn more about this warning here:\n' +
         'https://fb.me/react-async-component-lifecycle-hooks',
-      {withoutStack: true},
     );
 
     class WillReceiveProps extends React.Component {
@@ -937,7 +897,6 @@ describe('ReactComponentLifeCycle', () => {
         '  componentWillReceiveProps\n\n' +
         'The above lifecycles should be removed. Learn more about this warning here:\n' +
         'https://fb.me/react-async-component-lifecycle-hooks',
-      {withoutStack: true},
     );
   });
 
@@ -1005,7 +964,6 @@ describe('ReactComponentLifeCycle', () => {
     expect(() => ReactDOM.render(<MyComponent />, div)).toWarnDev(
       'MyComponent.getDerivedStateFromProps(): A valid state object (or null) must ' +
         'be returned. You have returned undefined.',
-      {withoutStack: true},
     );
 
     // De-duped
@@ -1024,11 +982,8 @@ describe('ReactComponentLifeCycle', () => {
 
     const div = document.createElement('div');
     expect(() => ReactDOM.render(<MyComponent />, div)).toWarnDev(
-      '`MyComponent` uses `getDerivedStateFromProps` but its initial state is ' +
-        'undefined. This is not recommended. Instead, define the initial state by ' +
-        'assigning an object to `this.state` in the constructor of `MyComponent`. ' +
-        'This ensures that `getDerivedStateFromProps` arguments have a consistent shape.',
-      {withoutStack: true},
+      'MyComponent: Did not properly initialize state during construction. ' +
+        'Expected state to be an object, but it was undefined.',
     );
 
     // De-duped
@@ -1110,22 +1065,16 @@ describe('ReactComponentLifeCycle', () => {
       }
     }
 
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    try {
-      ReactDOM.render(<Parent />, container);
-      expect(divRef.current.textContent).toBe('remote:0, local:0');
+    ReactTestUtils.renderIntoDocument(<Parent />);
+    expect(divRef.current.textContent).toBe('remote:0, local:0');
 
-      // Trigger setState() calls
-      childInstance.updateState();
-      expect(divRef.current.textContent).toBe('remote:1, local:1');
+    // Trigger setState() calls
+    childInstance.updateState();
+    expect(divRef.current.textContent).toBe('remote:1, local:1');
 
-      // Trigger batched setState() calls
-      divRef.current.click();
-      expect(divRef.current.textContent).toBe('remote:2, local:2');
-    } finally {
-      document.body.removeChild(container);
-    }
+    // Trigger batched setState() calls
+    ReactTestUtils.Simulate.click(divRef.current);
+    expect(divRef.current.textContent).toBe('remote:2, local:2');
   });
 
   it('should pass the return value from getSnapshotBeforeUpdate to componentDidUpdate', () => {
@@ -1254,7 +1203,6 @@ describe('ReactComponentLifeCycle', () => {
     expect(() => ReactDOM.render(<MyComponent value="bar" />, div)).toWarnDev(
       'MyComponent.getSnapshotBeforeUpdate(): A snapshot value (or null) must ' +
         'be returned. You have returned undefined.',
-      {withoutStack: true},
     );
 
     // De-duped
@@ -1275,7 +1223,6 @@ describe('ReactComponentLifeCycle', () => {
     expect(() => ReactDOM.render(<MyComponent />, div)).toWarnDev(
       'MyComponent: getSnapshotBeforeUpdate() should be used with componentDidUpdate(). ' +
         'This component defines getSnapshotBeforeUpdate() only.',
-      {withoutStack: true},
     );
 
     // De-duped

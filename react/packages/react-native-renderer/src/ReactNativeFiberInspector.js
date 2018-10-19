@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2015-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -14,17 +14,13 @@ import {
   findCurrentFiberUsingSlowPath,
 } from 'react-reconciler/reflection';
 import getComponentName from 'shared/getComponentName';
-import {HostComponent} from 'shared/ReactWorkTags';
-import invariant from 'shared/invariant';
+import {HostComponent} from 'shared/ReactTypeOfWork';
+import emptyObject from 'fbjs/lib/emptyObject';
+import invariant from 'fbjs/lib/invariant';
 // Module provided by RN:
 import UIManager from 'UIManager';
 
 import {getClosestInstanceFromNode} from './ReactNativeComponentTree';
-
-const emptyObject = {};
-if (__DEV__) {
-  Object.freeze(emptyObject);
-}
 
 let getInspectorDataForViewTag;
 
@@ -79,7 +75,7 @@ if (__DEV__) {
 
   const createHierarchy = function(fiberHierarchy) {
     return fiberHierarchy.map(fiber => ({
-      name: getComponentName(fiber.type),
+      name: getComponentName(fiber),
       getInspectorData: findNodeHandle => ({
         measure: callback =>
           UIManager.measure(getHostNode(fiber, findNodeHandle), callback),

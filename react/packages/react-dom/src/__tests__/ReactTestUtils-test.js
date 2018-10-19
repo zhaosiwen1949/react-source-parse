@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -53,16 +53,6 @@ describe('ReactTestUtils', () => {
     MockedComponent.prototype.render = jest.fn();
 
     // Patch it up so it returns its children.
-    expect(() =>
-      ReactTestUtils.mockComponent(MockedComponent),
-    ).toLowPriorityWarnDev(
-      'ReactTestUtils.mockComponent() is deprecated. ' +
-        'Use shallow rendering or jest.mock() instead.\n\n' +
-        'See https://fb.me/test-utils-mock-component for more information.',
-      {withoutStack: true},
-    );
-
-    // De-duplication check
     ReactTestUtils.mockComponent(MockedComponent);
 
     const container = document.createElement('div');
@@ -259,7 +249,7 @@ describe('ReactTestUtils', () => {
   });
 
   it('can scry with stateless components involved', () => {
-    const Function = () => (
+    const Stateless = () => (
       <div>
         <hr />
       </div>
@@ -269,7 +259,7 @@ describe('ReactTestUtils', () => {
       render() {
         return (
           <div>
-            <Function />
+            <Stateless />
             <hr />
           </div>
         );
@@ -281,62 +271,6 @@ describe('ReactTestUtils', () => {
     expect(hrs.length).toBe(2);
   });
 
-  it('provides a clear error when passing invalid objects to scry', () => {
-    // This is probably too relaxed but it's existing behavior.
-    ReactTestUtils.findAllInRenderedTree(null, 'span');
-    ReactTestUtils.findAllInRenderedTree(undefined, 'span');
-    ReactTestUtils.findAllInRenderedTree('', 'span');
-    ReactTestUtils.findAllInRenderedTree(0, 'span');
-    ReactTestUtils.findAllInRenderedTree(false, 'span');
-
-    expect(() => {
-      ReactTestUtils.findAllInRenderedTree([], 'span');
-    }).toThrow(
-      'findAllInRenderedTree(...): the first argument must be a React class instance. ' +
-        'Instead received: an array.',
-    );
-    expect(() => {
-      ReactTestUtils.scryRenderedDOMComponentsWithClass(10, 'button');
-    }).toThrow(
-      'scryRenderedDOMComponentsWithClass(...): the first argument must be a React class instance. ' +
-        'Instead received: 10.',
-    );
-    expect(() => {
-      ReactTestUtils.findRenderedDOMComponentWithClass('hello', 'button');
-    }).toThrow(
-      'findRenderedDOMComponentWithClass(...): the first argument must be a React class instance. ' +
-        'Instead received: hello.',
-    );
-    expect(() => {
-      ReactTestUtils.scryRenderedDOMComponentsWithTag(
-        {x: true, y: false},
-        'span',
-      );
-    }).toThrow(
-      'scryRenderedDOMComponentsWithTag(...): the first argument must be a React class instance. ' +
-        'Instead received: object with keys {x, y}.',
-    );
-    const div = document.createElement('div');
-    expect(() => {
-      ReactTestUtils.findRenderedDOMComponentWithTag(div, 'span');
-    }).toThrow(
-      'findRenderedDOMComponentWithTag(...): the first argument must be a React class instance. ' +
-        'Instead received: a DOM node.',
-    );
-    expect(() => {
-      ReactTestUtils.scryRenderedComponentsWithType(true, 'span');
-    }).toThrow(
-      'scryRenderedComponentsWithType(...): the first argument must be a React class instance. ' +
-        'Instead received: true.',
-    );
-    expect(() => {
-      ReactTestUtils.findRenderedComponentWithType(true, 'span');
-    }).toThrow(
-      'findRenderedComponentWithType(...): the first argument must be a React class instance. ' +
-        'Instead received: true.',
-    );
-  });
-
   describe('Simulate', () => {
     it('should change the value of an input field', () => {
       const obj = {
@@ -346,16 +280,17 @@ describe('ReactTestUtils', () => {
       };
       spyOnDevAndProd(obj, 'handler').and.callThrough();
       const container = document.createElement('div');
-      const node = ReactDOM.render(
+      const instance = ReactDOM.render(
         <input type="text" onChange={obj.handler} />,
         container,
       );
 
+      const node = ReactDOM.findDOMNode(instance);
       node.value = 'giraffe';
       ReactTestUtils.Simulate.change(node);
 
       expect(obj.handler).toHaveBeenCalledWith(
-        expect.objectContaining({target: node}),
+        jasmine.objectContaining({target: node}),
       );
     });
 
@@ -386,12 +321,12 @@ describe('ReactTestUtils', () => {
         container,
       );
 
-      const node = instance.refs.input;
+      const node = ReactDOM.findDOMNode(instance.refs.input);
       node.value = 'zebra';
       ReactTestUtils.Simulate.change(node);
 
       expect(obj.handler).toHaveBeenCalledWith(
-        expect.objectContaining({target: node}),
+        jasmine.objectContaining({target: node}),
       );
     });
 
@@ -402,7 +337,7 @@ describe('ReactTestUtils', () => {
         }
       }
 
-      const handler = jest.fn().mockName('spy');
+      const handler = jasmine.createSpy('spy');
       const shallowRenderer = createRenderer();
       const result = shallowRenderer.render(
         <SomeComponent handleClick={handler} />,
@@ -423,7 +358,7 @@ describe('ReactTestUtils', () => {
         }
       }
 
-      const handler = jest.fn().mockName('spy');
+      const handler = jasmine.createSpy('spy');
       const container = document.createElement('div');
       const instance = ReactDOM.render(
         <SomeComponent handleClick={handler} />,
@@ -459,7 +394,7 @@ describe('ReactTestUtils', () => {
 
     it('should set the type of the event', () => {
       let event;
-      const stub = jest.fn().mockImplementation(e => {
+      const stub = jest.genMockFn().mockImplementation(e => {
         e.persist();
         event = e;
       });
@@ -496,7 +431,7 @@ describe('ReactTestUtils', () => {
       ReactTestUtils.Simulate.change(input);
 
       expect(onChange).toHaveBeenCalledWith(
-        expect.objectContaining({target: input}),
+        jasmine.objectContaining({target: input}),
       );
     });
   });

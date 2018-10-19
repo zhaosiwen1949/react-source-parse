@@ -1,12 +1,12 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 import dangerousStyleValue from './dangerousStyleValue';
-import hyphenateStyleName from './hyphenateStyleName';
+import hyphenateStyleName from 'fbjs/lib/hyphenateStyleName';
 import warnValidStyle from './warnValidStyle';
 
 /**
@@ -51,7 +51,7 @@ export function createDangerousStringForStyles(styles) {
  * @param {DOMElement} node
  * @param {object} styles
  */
-export function setValueForStyles(node, styles) {
+export function setValueForStyles(node, styles, getStack) {
   const style = node.style;
   for (let styleName in styles) {
     if (!styles.hasOwnProperty(styleName)) {
@@ -60,7 +60,7 @@ export function setValueForStyles(node, styles) {
     const isCustomProperty = styleName.indexOf('--') === 0;
     if (__DEV__) {
       if (!isCustomProperty) {
-        warnValidStyle(styleName, styles[styleName]);
+        warnValidStyle(styleName, styles[styleName], getStack);
       }
     }
     const styleValue = dangerousStyleValue(

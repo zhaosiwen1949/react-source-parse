@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,10 +7,22 @@
 
 /* eslint valid-typeof: 0 */
 
-import invariant from 'shared/invariant';
-import warningWithoutStack from 'shared/warningWithoutStack';
+import emptyFunction from 'fbjs/lib/emptyFunction';
+import invariant from 'fbjs/lib/invariant';
+import warning from 'fbjs/lib/warning';
 
+let didWarnForAddedNewProperty = false;
 const EVENT_POOL_SIZE = 10;
+
+const shouldBeReleasedProperties = [
+  'dispatchConfig',
+  '_targetInst',
+  'nativeEvent',
+  'isDefaultPrevented',
+  'isPropagationStopped',
+  '_dispatchListeners',
+  '_dispatchInstances',
+];
 
 /**
  * @interface Event
@@ -20,9 +32,7 @@ const EventInterface = {
   type: null,
   target: null,
   // currentTarget is set when dispatching; no use in copying it here
-  currentTarget: function() {
-    return null;
-  },
+  currentTarget: emptyFunction.thatReturnsNull,
   eventPhase: null,
   bubbles: null,
   cancelable: null,
@@ -32,14 +42,6 @@ const EventInterface = {
   defaultPrevented: null,
   isTrusted: null,
 };
-
-function functionThatReturnsTrue() {
-  return true;
-}
-
-function functionThatReturnsFalse() {
-  return false;
-}
 
 /**
  * Synthetic events are dispatched by event plugins, typically in response to a
@@ -70,8 +72,6 @@ function SyntheticEvent(
     delete this.nativeEvent;
     delete this.preventDefault;
     delete this.stopPropagation;
-    delete this.isDefaultPrevented;
-    delete this.isPropagationStopped;
   }
 
   this.dispatchConfig = dispatchConfig;
@@ -103,11 +103,11 @@ function SyntheticEvent(
       ? nativeEvent.defaultPrevented
       : nativeEvent.returnValue === false;
   if (defaultPrevented) {
-    this.isDefaultPrevented = functionThatReturnsTrue;
+    this.isDefaultPrevented = emptyFunction.thatReturnsTrue;
   } else {
-    this.isDefaultPrevented = functionThatReturnsFalse;
+    this.isDefaultPrevented = emptyFunction.thatReturnsFalse;
   }
-  this.isPropagationStopped = functionThatReturnsFalse;
+  this.isPropagationStopped = emptyFunction.thatReturnsFalse;
   return this;
 }
 
@@ -124,7 +124,7 @@ Object.assign(SyntheticEvent.prototype, {
     } else if (typeof event.returnValue !== 'unknown') {
       event.returnValue = false;
     }
-    this.isDefaultPrevented = functionThatReturnsTrue;
+    this.isDefaultPrevented = emptyFunction.thatReturnsTrue;
   },
 
   stopPropagation: function() {
@@ -144,7 +144,7 @@ Object.assign(SyntheticEvent.prototype, {
       event.cancelBubble = true;
     }
 
-    this.isPropagationStopped = functionThatReturnsTrue;
+    this.isPropagationStopped = emptyFunction.thatReturnsTrue;
   },
 
   /**
@@ -153,7 +153,7 @@ Object.assign(SyntheticEvent.prototype, {
    * won't be added back into the pool.
    */
   persist: function() {
-    this.isPersistent = functionThatReturnsTrue;
+    this.isPersistent = emptyFunction.thatReturnsTrue;
   },
 
   /**
@@ -161,7 +161,7 @@ Object.assign(SyntheticEvent.prototype, {
    *
    * @return {boolean} True if this should not be released, false otherwise.
    */
-  isPersistent: functionThatReturnsFalse,
+  isPersistent: emptyFunction.thatReturnsFalse,
 
   /**
    * `PooledClass` looks for `destructor` on each instance it releases.
@@ -179,13 +179,9 @@ Object.assign(SyntheticEvent.prototype, {
         this[propName] = null;
       }
     }
-    this.dispatchConfig = null;
-    this._targetInst = null;
-    this.nativeEvent = null;
-    this.isDefaultPrevented = functionThatReturnsFalse;
-    this.isPropagationStopped = functionThatReturnsFalse;
-    this._dispatchListeners = null;
-    this._dispatchInstances = null;
+    for (let i = 0; i < shouldBeReleasedProperties.length; i++) {
+      this[shouldBeReleasedProperties[i]] = null;
+    }
     if (__DEV__) {
       Object.defineProperty(
         this,
@@ -194,29 +190,13 @@ Object.assign(SyntheticEvent.prototype, {
       );
       Object.defineProperty(
         this,
-        'isDefaultPrevented',
-        getPooledWarningPropertyDefinition(
-          'isDefaultPrevented',
-          functionThatReturnsFalse,
-        ),
-      );
-      Object.defineProperty(
-        this,
-        'isPropagationStopped',
-        getPooledWarningPropertyDefinition(
-          'isPropagationStopped',
-          functionThatReturnsFalse,
-        ),
-      );
-      Object.defineProperty(
-        this,
         'preventDefault',
-        getPooledWarningPropertyDefinition('preventDefault', () => {}),
+        getPooledWarningPropertyDefinition('preventDefault', emptyFunction),
       );
       Object.defineProperty(
         this,
         'stopPropagation',
-        getPooledWarningPropertyDefinition('stopPropagation', () => {}),
+        getPooledWarningPropertyDefinition('stopPropagation', emptyFunction),
       );
     }
   },
@@ -247,6 +227,49 @@ SyntheticEvent.extend = function(Interface) {
 
   return Class;
 };
+
+/** Proxying after everything set on SyntheticEvent
+ * to resolve Proxy issue on some WebKit browsers
+ * in which some Event properties are set to undefined (GH#10010)
+ */
+if (__DEV__) {
+  const isProxySupported =
+    typeof Proxy === 'function' &&
+    // https://github.com/facebook/react/issues/12011
+    !Object.isSealed(new Proxy({}, {}));
+
+  if (isProxySupported) {
+    /*eslint-disable no-func-assign */
+    SyntheticEvent = new Proxy(SyntheticEvent, {
+      construct: function(target, args) {
+        return this.apply(target, Object.create(target.prototype), args);
+      },
+      apply: function(constructor, that, args) {
+        return new Proxy(constructor.apply(that, args), {
+          set: function(target, prop, value) {
+            if (
+              prop !== 'isPersistent' &&
+              !target.constructor.Interface.hasOwnProperty(prop) &&
+              shouldBeReleasedProperties.indexOf(prop) === -1
+            ) {
+              warning(
+                didWarnForAddedNewProperty || target.isPersistent(),
+                "This synthetic event is reused for performance reasons. If you're " +
+                  "seeing this, you're adding a new property in the synthetic event object. " +
+                  'The property is never released. See ' +
+                  'https://fb.me/react-event-pooling for more information.',
+              );
+              didWarnForAddedNewProperty = true;
+            }
+            target[prop] = value;
+            return true;
+          },
+        });
+      },
+    });
+    /*eslint-enable no-func-assign */
+  }
+}
 
 addEventPoolingTo(SyntheticEvent);
 
@@ -284,7 +307,7 @@ function getPooledWarningPropertyDefinition(propName, getVal) {
 
   function warn(action, result) {
     const warningCondition = false;
-    warningWithoutStack(
+    warning(
       warningCondition,
       "This synthetic event is reused for performance reasons. If you're seeing this, " +
         "you're %s `%s` on a released/nullified synthetic event. %s. " +
@@ -322,7 +345,7 @@ function releasePooledEvent(event) {
   const EventConstructor = this;
   invariant(
     event instanceof EventConstructor,
-    'Trying to release an event instance into a pool of a different type.',
+    'Trying to release an event instance  into a pool of a different type.',
   );
   event.destructor();
   if (EventConstructor.eventPool.length < EVENT_POOL_SIZE) {

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -60,10 +60,9 @@ export function createMarkupForProperty(name: string, value: mixed): string {
     } else {
       return attributeName + '=' + quoteAttributeValueForBrowser(value);
     }
-  } else if (isAttributeNameSafe(name)) {
+  } else {
     return name + '=' + quoteAttributeValueForBrowser(value);
   }
-  return '';
 }
 
 /**

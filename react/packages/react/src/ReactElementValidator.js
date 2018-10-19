@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2014-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -13,33 +13,65 @@
  */
 
 import lowPriorityWarning from 'shared/lowPriorityWarning';
+import describeComponentFrame from 'shared/describeComponentFrame';
 import isValidElementType from 'shared/isValidElementType';
 import getComponentName from 'shared/getComponentName';
-import {
-  getIteratorFn,
-  REACT_FORWARD_REF_TYPE,
-  REACT_FRAGMENT_TYPE,
-  REACT_ELEMENT_TYPE,
-} from 'shared/ReactSymbols';
+import {getIteratorFn, REACT_FRAGMENT_TYPE} from 'shared/ReactSymbols';
 import checkPropTypes from 'prop-types/checkPropTypes';
-import warning from 'shared/warning';
-import warningWithoutStack from 'shared/warningWithoutStack';
+import warning from 'fbjs/lib/warning';
 
 import ReactCurrentOwner from './ReactCurrentOwner';
 import {isValidElement, createElement, cloneElement} from './ReactElement';
-import ReactDebugCurrentFrame, {
-  setCurrentlyValidatingElement,
-} from './ReactDebugCurrentFrame';
+import ReactDebugCurrentFrame from './ReactDebugCurrentFrame';
 
+let currentlyValidatingElement;
 let propTypesMisspellWarningShown;
 
+let getDisplayName = () => {};
+let getStackAddendum = () => {};
+
+let VALID_FRAGMENT_PROPS;
+
 if (__DEV__) {
+  currentlyValidatingElement = null;
+
   propTypesMisspellWarningShown = false;
+
+  getDisplayName = function(element): string {
+    if (element == null) {
+      return '#empty';
+    } else if (typeof element === 'string' || typeof element === 'number') {
+      return '#text';
+    } else if (typeof element.type === 'string') {
+      return element.type;
+    } else if (element.type === REACT_FRAGMENT_TYPE) {
+      return 'React.Fragment';
+    } else {
+      return element.type.displayName || element.type.name || 'Unknown';
+    }
+  };
+
+  getStackAddendum = function(): string {
+    let stack = '';
+    if (currentlyValidatingElement) {
+      const name = getDisplayName(currentlyValidatingElement);
+      const owner = currentlyValidatingElement._owner;
+      stack += describeComponentFrame(
+        name,
+        currentlyValidatingElement._source,
+        owner && getComponentName(owner),
+      );
+    }
+    stack += ReactDebugCurrentFrame.getStackAddendum() || '';
+    return stack;
+  };
+
+  VALID_FRAGMENT_PROPS = new Map([['children', true], ['key', true]]);
 }
 
 function getDeclarationErrorAddendum() {
   if (ReactCurrentOwner.current) {
-    const name = getComponentName(ReactCurrentOwner.current.type);
+    const name = getComponentName(ReactCurrentOwner.current);
     if (name) {
       return '\n\nCheck the render method of `' + name + '`.';
     }
@@ -117,21 +149,22 @@ function validateExplicitKey(element, parentType) {
   ) {
     // Give the component that originally created this child.
     childOwner = ` It was passed a child from ${getComponentName(
-      element._owner.type,
+      element._owner,
     )}.`;
   }
 
-  setCurrentlyValidatingElement(element);
+  currentlyValidatingElement = element;
   if (__DEV__) {
     warning(
       false,
       'Each child in an array or iterator should have a unique "key" prop.' +
-        '%s%s See https://fb.me/react-warning-keys for more information.',
+        '%s%s See https://fb.me/react-warning-keys for more information.%s',
       currentComponentErrorInfo,
       childOwner,
+      getStackAddendum(),
     );
   }
-  setCurrentlyValidatingElement(null);
+  currentlyValidatingElement = null;
 }
 
 /**
@@ -184,47 +217,30 @@ function validateChildKeys(node, parentType) {
  * @param {ReactElement} element
  */
 function validatePropTypes(element) {
-  const type = element.type;
-  let name, propTypes;
-  if (typeof type === 'function') {
-    // Class or function component
-    name = type.displayName || type.name;
-    propTypes = type.propTypes;
-  } else if (
-    typeof type === 'object' &&
-    type !== null &&
-    type.$$typeof === REACT_FORWARD_REF_TYPE
-  ) {
-    // ForwardRef
-    const functionName = type.render.displayName || type.render.name || '';
-    name =
-      type.displayName ||
-      (functionName !== '' ? `ForwardRef(${functionName})` : 'ForwardRef');
-    propTypes = type.propTypes;
-  } else {
+  const componentClass = element.type;
+  if (typeof componentClass !== 'function') {
     return;
   }
+  const name = componentClass.displayName || componentClass.name;
+  const propTypes = componentClass.propTypes;
   if (propTypes) {
-    setCurrentlyValidatingElement(element);
-    checkPropTypes(
-      propTypes,
-      element.props,
-      'prop',
-      name,
-      ReactDebugCurrentFrame.getStackAddendum,
-    );
-    setCurrentlyValidatingElement(null);
-  } else if (type.PropTypes !== undefined && !propTypesMisspellWarningShown) {
+    currentlyValidatingElement = element;
+    checkPropTypes(propTypes, element.props, 'prop', name, getStackAddendum);
+    currentlyValidatingElement = null;
+  } else if (
+    componentClass.PropTypes !== undefined &&
+    !propTypesMisspellWarningShown
+  ) {
     propTypesMisspellWarningShown = true;
-    warningWithoutStack(
+    warning(
       false,
       'Component %s declared `PropTypes` instead of `propTypes`. Did you misspell the property assignment?',
       name || 'Unknown',
     );
   }
-  if (typeof type.getDefaultProps === 'function') {
-    warningWithoutStack(
-      type.getDefaultProps.isReactClassApproved,
+  if (typeof componentClass.getDefaultProps === 'function') {
+    warning(
+      componentClass.getDefaultProps.isReactClassApproved,
       'getDefaultProps is only used on classic React.createClass ' +
         'definitions. Use a static property named `defaultProps` instead.',
     );
@@ -236,27 +252,32 @@ function validatePropTypes(element) {
  * @param {ReactElement} fragment
  */
 function validateFragmentProps(fragment) {
-  setCurrentlyValidatingElement(fragment);
+  currentlyValidatingElement = fragment;
 
   const keys = Object.keys(fragment.props);
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
-    if (key !== 'children' && key !== 'key') {
+    if (!VALID_FRAGMENT_PROPS.has(key)) {
       warning(
         false,
         'Invalid prop `%s` supplied to `React.Fragment`. ' +
-          'React.Fragment can only have `key` and `children` props.',
+          'React.Fragment can only have `key` and `children` props.%s',
         key,
+        getStackAddendum(),
       );
       break;
     }
   }
 
   if (fragment.ref !== null) {
-    warning(false, 'Invalid attribute `ref` supplied to `React.Fragment`.');
+    warning(
+      false,
+      'Invalid attribute `ref` supplied to `React.Fragment`.%s',
+      getStackAddendum(),
+    );
   }
 
-  setCurrentlyValidatingElement(null);
+  currentlyValidatingElement = null;
 }
 
 export function createElementWithValidation(type, props, children) {
@@ -284,15 +305,13 @@ export function createElementWithValidation(type, props, children) {
       info += getDeclarationErrorAddendum();
     }
 
+    info += getStackAddendum() || '';
+
     let typeString;
     if (type === null) {
       typeString = 'null';
     } else if (Array.isArray(type)) {
       typeString = 'array';
-    } else if (type !== undefined && type.$$typeof === REACT_ELEMENT_TYPE) {
-      typeString = `<${getComponentName(type.type) || 'Unknown'} />`;
-      info =
-        ' Did you accidentally export a JSX literal instead of a component?';
     } else {
       typeString = typeof type;
     }

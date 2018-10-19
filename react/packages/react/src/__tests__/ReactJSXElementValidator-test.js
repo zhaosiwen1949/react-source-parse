@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -221,21 +221,18 @@ describe('ReactJSXElementValidator', () => {
         "component from the file it's defined in, or you might have mixed up " +
         'default and named imports.' +
         '\n\nCheck your code at **.',
-      {withoutStack: true},
     );
     expect(() => void <Null />).toWarnDev(
       'Warning: React.createElement: type is invalid -- expected a string ' +
         '(for built-in components) or a class/function (for composite ' +
         'components) but got: null.' +
         '\n\nCheck your code at **.',
-      {withoutStack: true},
     );
     expect(() => void <True />).toWarnDev(
       'Warning: React.createElement: type is invalid -- expected a string ' +
         '(for built-in components) or a class/function (for composite ' +
         'components) but got: boolean.' +
         '\n\nCheck your code at **.',
-      {withoutStack: true},
     );
     // No error expected
     void <Div />;
@@ -337,7 +334,6 @@ describe('ReactJSXElementValidator', () => {
     ).toWarnDev(
       'getDefaultProps is only used on classic React.createClass definitions.' +
         ' Use a static property named `defaultProps` instead.',
-      {withoutStack: true},
     );
   });
 
@@ -357,7 +353,6 @@ describe('ReactJSXElementValidator', () => {
     ).toWarnDev(
       'Warning: Component MisspelledPropTypesComponent declared `PropTypes` ' +
         'instead of `propTypes`. Did you misspell the property assignment?',
-      {withoutStack: true},
     );
   });
 
@@ -411,8 +406,6 @@ describe('ReactJSXElementValidator', () => {
           <span key="b">3</span>
         </React.Fragment>,
       ),
-    ).toWarnDev('Encountered two children with the same key, `a`.', {
-      withoutStack: true,
-    });
+    ).toWarnDev('Encountered two children with the same key, `a`.');
   });
 });

@@ -1,22 +1,22 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
+import assign from 'object-assign';
 import ReactVersion from 'shared/ReactVersion';
 import {
-  REACT_CONCURRENT_MODE_TYPE,
   REACT_FRAGMENT_TYPE,
-  REACT_PROFILER_TYPE,
   REACT_STRICT_MODE_TYPE,
-  REACT_SUSPENSE_TYPE,
+  REACT_ASYNC_MODE_TYPE,
 } from 'shared/ReactSymbols';
 
 import {Component, PureComponent} from './ReactBaseClasses';
 import {createRef} from './ReactCreateRef';
 import {forEach, map, count, toArray, only} from './ReactChildren';
+import ReactCurrentOwner from './ReactCurrentOwner';
 import {
   createElement,
   createFactory,
@@ -24,15 +24,13 @@ import {
   isValidElement,
 } from './ReactElement';
 import {createContext} from './ReactContext';
-import {lazy} from './ReactLazy';
 import forwardRef from './forwardRef';
-import pure from './pure';
 import {
   createElementWithValidation,
   createFactoryWithValidation,
   cloneElementWithValidation,
 } from './ReactElementValidator';
-import ReactSharedInternals from './ReactSharedInternals';
+import ReactDebugCurrentFrame from './ReactDebugCurrentFrame';
 
 const React = {
   Children: {
@@ -49,14 +47,10 @@ const React = {
 
   createContext,
   forwardRef,
-  lazy,
-  pure,
 
   Fragment: REACT_FRAGMENT_TYPE,
   StrictMode: REACT_STRICT_MODE_TYPE,
-  unstable_ConcurrentMode: REACT_CONCURRENT_MODE_TYPE,
-  unstable_Suspense: REACT_SUSPENSE_TYPE,
-  unstable_Profiler: REACT_PROFILER_TYPE,
+  unstable_AsyncMode: REACT_ASYNC_MODE_TYPE,
 
   createElement: __DEV__ ? createElementWithValidation : createElement,
   cloneElement: __DEV__ ? cloneElementWithValidation : cloneElement,
@@ -65,7 +59,21 @@ const React = {
 
   version: ReactVersion,
 
-  __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: ReactSharedInternals,
+  __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: {
+    ReactCurrentOwner,
+    // Used by renderers to avoid bundling object-assign twice in UMD bundles:
+    assign,
+  },
 };
+
+if (__DEV__) {
+  Object.assign(React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED, {
+    // These should not be included in production.
+    ReactDebugCurrentFrame,
+    // Shim for React DOM 16.0.0 which still destructured (but not used) this.
+    // TODO: remove in React 17.0.
+    ReactComponentTreeHook: {},
+  });
+}
 
 export default React;

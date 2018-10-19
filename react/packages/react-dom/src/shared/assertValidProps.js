@@ -1,26 +1,18 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import invariant from 'shared/invariant';
-import warning from 'shared/warning';
-// TODO: We can remove this if we add invariantWithStack()
-// or add stack by default to invariants where possible.
-import ReactSharedInternals from 'shared/ReactSharedInternals';
+import invariant from 'fbjs/lib/invariant';
+import warning from 'fbjs/lib/warning';
 
 import voidElementTags from './voidElementTags';
 
 const HTML = '__html';
 
-let ReactDebugCurrentFrame = null;
-if (__DEV__) {
-  ReactDebugCurrentFrame = ReactSharedInternals.ReactDebugCurrentFrame;
-}
-
-function assertValidProps(tag: string, props: ?Object) {
+function assertValidProps(tag: string, props: ?Object, getStack: () => string) {
   if (!props) {
     return;
   }
@@ -31,7 +23,7 @@ function assertValidProps(tag: string, props: ?Object) {
       '%s is a void element tag and must neither have `children` nor ' +
         'use `dangerouslySetInnerHTML`.%s',
       tag,
-      __DEV__ ? ReactDebugCurrentFrame.getStackAddendum() : '',
+      getStack(),
     );
   }
   if (props.dangerouslySetInnerHTML != null) {
@@ -55,7 +47,8 @@ function assertValidProps(tag: string, props: ?Object) {
       'A component is `contentEditable` and contains `children` managed by ' +
         'React. It is now your responsibility to guarantee that none of ' +
         'those nodes are unexpectedly modified or duplicated. This is ' +
-        'probably not intentional.',
+        'probably not intentional.%s',
+      getStack(),
     );
   }
   invariant(
@@ -63,7 +56,7 @@ function assertValidProps(tag: string, props: ?Object) {
     'The `style` prop expects a mapping from style properties to values, ' +
       "not a string. For example, style={{marginRight: spacing + 'em'}} when " +
       'using JSX.%s',
-    __DEV__ ? ReactDebugCurrentFrame.getStackAddendum() : '',
+    getStack(),
   );
 }
 

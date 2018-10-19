@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -12,86 +12,92 @@
 let React = require('react');
 let ReactDOM = require('react-dom');
 let ReactDOMServer = require('react-dom/server');
-let ConcurrentMode = React.unstable_ConcurrentMode;
+let AsyncMode = React.unstable_AsyncMode;
 
 describe('ReactDOMRoot', () => {
   let container;
 
-  let advanceCurrentTime;
+  let scheduledCallback;
+  let flush;
+  let now;
+  let expire;
 
   beforeEach(() => {
     container = document.createElement('div');
-    // TODO pull this into helper method, reduce repetition.
-    // mock the browser APIs which are used in schedule:
-    // - requestAnimationFrame should pass the DOMHighResTimeStamp argument
-    // - calling 'window.postMessage' should actually fire postmessage handlers
-    // - must allow artificially changing time returned by Date.now
-    // Performance.now is not supported in the test environment
-    const originalDateNow = Date.now;
-    let advancedTime = null;
-    global.Date.now = function() {
-      if (advancedTime) {
-        return originalDateNow() + advancedTime;
-      }
-      return originalDateNow();
-    };
-    advanceCurrentTime = function(amount) {
-      advancedTime = amount;
-    };
-    global.requestAnimationFrame = function(cb) {
-      return setTimeout(() => {
-        cb(Date.now());
-      });
-    };
-    const originalAddEventListener = global.addEventListener;
-    let postMessageCallback;
-    global.addEventListener = function(eventName, callback, useCapture) {
-      if (eventName === 'message') {
-        postMessageCallback = callback;
-      } else {
-        originalAddEventListener(eventName, callback, useCapture);
+
+    // Override requestIdleCallback
+    scheduledCallback = null;
+    flush = function(units = Infinity) {
+      if (scheduledCallback !== null) {
+        let didStop = false;
+        while (scheduledCallback !== null && !didStop) {
+          const cb = scheduledCallback;
+          scheduledCallback = null;
+          cb({
+            timeRemaining() {
+              if (units > 0) {
+                return 999;
+              }
+              didStop = true;
+              return 0;
+            },
+          });
+          units--;
+        }
       }
     };
-    global.postMessage = function(messageKey, targetOrigin) {
-      const postMessageEvent = {source: window, data: messageKey};
-      if (postMessageCallback) {
-        postMessageCallback(postMessageEvent);
-      }
+    global.performance = {
+      now() {
+        return now;
+      },
+    };
+    global.requestIdleCallback = function(cb) {
+      scheduledCallback = cb;
+    };
+
+    now = 0;
+    expire = function(ms) {
+      now += ms;
+    };
+    global.performance = {
+      now() {
+        return now;
+      },
     };
 
     jest.resetModules();
     React = require('react');
     ReactDOM = require('react-dom');
     ReactDOMServer = require('react-dom/server');
-    ConcurrentMode = React.unstable_ConcurrentMode;
+    AsyncMode = React.unstable_AsyncMode;
   });
 
   it('renders children', () => {
     const root = ReactDOM.unstable_createRoot(container);
     root.render(<div>Hi</div>);
-    jest.runAllTimers();
+    flush();
     expect(container.textContent).toEqual('Hi');
   });
 
   it('unmounts children', () => {
     const root = ReactDOM.unstable_createRoot(container);
     root.render(<div>Hi</div>);
-    jest.runAllTimers();
+    flush();
     expect(container.textContent).toEqual('Hi');
     root.unmount();
-    jest.runAllTimers();
+    flush();
     expect(container.textContent).toEqual('');
   });
 
   it('`root.render` returns a thenable work object', () => {
     const root = ReactDOM.unstable_createRoot(container);
-    const work = root.render(<ConcurrentMode>Hi</ConcurrentMode>);
+    const work = root.render(<AsyncMode>Hi</AsyncMode>);
     let ops = [];
     work.then(() => {
       ops.push('inside callback: ' + container.textContent);
     });
     ops.push('before committing: ' + container.textContent);
-    jest.runAllTimers();
+    flush();
     ops.push('after committing: ' + container.textContent);
     expect(ops).toEqual([
       'before committing: ',
@@ -103,8 +109,8 @@ describe('ReactDOMRoot', () => {
 
   it('resolves `work.then` callback synchronously if the work already committed', () => {
     const root = ReactDOM.unstable_createRoot(container);
-    const work = root.render(<ConcurrentMode>Hi</ConcurrentMode>);
-    jest.runAllTimers();
+    const work = root.render(<AsyncMode>Hi</AsyncMode>);
+    flush();
     let ops = [];
     work.then(() => {
       ops.push('inside callback');
@@ -132,7 +138,7 @@ describe('ReactDOMRoot', () => {
         <span />
       </div>,
     );
-    jest.runAllTimers();
+    flush();
 
     // Accepts `hydrate` option
     const container2 = document.createElement('div');
@@ -143,9 +149,7 @@ describe('ReactDOMRoot', () => {
         <span />
       </div>,
     );
-    expect(jest.runAllTimers).toWarnDev('Extra attributes', {
-      withoutStack: true,
-    });
+    expect(flush).toWarnDev('Extra attributes');
   });
 
   it('does not clear existing children', async () => {
@@ -157,7 +161,7 @@ describe('ReactDOMRoot', () => {
         <span>d</span>
       </div>,
     );
-    jest.runAllTimers();
+    flush();
     expect(container.textContent).toEqual('abcd');
     root.render(
       <div>
@@ -165,7 +169,7 @@ describe('ReactDOMRoot', () => {
         <span>c</span>
       </div>,
     );
-    jest.runAllTimers();
+    flush();
     expect(container.textContent).toEqual('abdc');
   });
 
@@ -196,12 +200,12 @@ describe('ReactDOMRoot', () => {
     const root = ReactDOM.unstable_createRoot(container);
     const batch = root.createBatch();
     batch.render(
-      <ConcurrentMode>
+      <AsyncMode>
         <App />
-      </ConcurrentMode>,
+      </AsyncMode>,
     );
 
-    jest.runAllTimers();
+    flush();
 
     // Hasn't updated yet
     expect(container.textContent).toEqual('');
@@ -230,7 +234,7 @@ describe('ReactDOMRoot', () => {
     const batch = root.createBatch();
     batch.render(<Foo>Hi</Foo>);
     // Flush all async work.
-    jest.runAllTimers();
+    flush();
     // Root should complete without committing.
     expect(ops).toEqual(['Foo']);
     expect(container.textContent).toEqual('');
@@ -246,9 +250,9 @@ describe('ReactDOMRoot', () => {
   it('can wait for a batch to finish', () => {
     const root = ReactDOM.unstable_createRoot(container);
     const batch = root.createBatch();
-    batch.render(<ConcurrentMode>Foo</ConcurrentMode>);
+    batch.render(<AsyncMode>Foo</AsyncMode>);
 
-    jest.runAllTimers();
+    flush();
 
     // Hasn't updated yet
     expect(container.textContent).toEqual('');
@@ -286,9 +290,9 @@ describe('ReactDOMRoot', () => {
 
   it('can commit an empty batch', () => {
     const root = ReactDOM.unstable_createRoot(container);
-    root.render(<ConcurrentMode>1</ConcurrentMode>);
+    root.render(<AsyncMode>1</AsyncMode>);
 
-    advanceCurrentTime(2000);
+    expire(2000);
     // This batch has a later expiration time than the earlier update.
     const batch = root.createBatch();
 
@@ -296,7 +300,7 @@ describe('ReactDOMRoot', () => {
     batch.commit();
     expect(container.textContent).toEqual('');
 
-    jest.runAllTimers();
+    flush();
     expect(container.textContent).toEqual('1');
   });
 
@@ -323,7 +327,7 @@ describe('ReactDOMRoot', () => {
     batch1.render(1);
 
     // This batch has a later expiration time
-    advanceCurrentTime(2000);
+    expire(2000);
     const batch2 = root.createBatch();
     batch2.render(2);
 
@@ -342,7 +346,7 @@ describe('ReactDOMRoot', () => {
     batch1.render(1);
 
     // This batch has a later expiration time
-    advanceCurrentTime(2000);
+    expire(2000);
     const batch2 = root.createBatch();
     batch2.render(2);
 
@@ -352,7 +356,7 @@ describe('ReactDOMRoot', () => {
     expect(container.textContent).toEqual('2');
 
     batch1.commit();
-    jest.runAllTimers();
+    flush();
     expect(container.textContent).toEqual('1');
   });
 
@@ -360,18 +364,9 @@ describe('ReactDOMRoot', () => {
     const root = ReactDOM.unstable_createRoot(container);
     const batch = root.createBatch();
     const InvalidType = undefined;
-    expect(() => batch.render(<InvalidType />)).toWarnDev(
-      ['React.createElement: type is invalid'],
-      {withoutStack: true},
-    );
+    expect(() => batch.render(<InvalidType />)).toWarnDev([
+      'React.createElement: type is invalid',
+    ]);
     expect(() => batch.commit()).toThrow('Element type is invalid');
-  });
-
-  it('throws a good message on invalid containers', () => {
-    expect(() => {
-      ReactDOM.unstable_createRoot(<div>Hi</div>);
-    }).toThrow(
-      'unstable_createRoot(...): Target container is not a DOM element.',
-    );
   });
 });

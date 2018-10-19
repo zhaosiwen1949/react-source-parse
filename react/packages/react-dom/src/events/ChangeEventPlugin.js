@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -11,24 +11,13 @@ import {enqueueStateRestore} from 'events/ReactControlledComponent';
 import {batchedUpdates} from 'events/ReactGenericBatching';
 import SyntheticEvent from 'events/SyntheticEvent';
 import isTextInputElement from 'shared/isTextInputElement';
-import {canUseDOM} from 'shared/ExecutionEnvironment';
+import ExecutionEnvironment from 'fbjs/lib/ExecutionEnvironment';
 
-import {
-  TOP_BLUR,
-  TOP_CHANGE,
-  TOP_CLICK,
-  TOP_FOCUS,
-  TOP_INPUT,
-  TOP_KEY_DOWN,
-  TOP_KEY_UP,
-  TOP_SELECTION_CHANGE,
-} from './DOMTopLevelEventTypes';
 import getEventTarget from './getEventTarget';
 import isEventSupported from './isEventSupported';
 import {getNodeFromInstance} from '../client/ReactDOMComponentTree';
 import * as inputValueTracking from '../client/inputValueTracking';
-import {setDefaultValue} from '../client/ReactDOMInput';
-import {disableInputAttributeSyncing} from 'shared/ReactFeatureFlags';
+import {setDefaultValue} from '../client/ReactDOMFiberInput';
 
 const eventTypes = {
   change: {
@@ -37,14 +26,14 @@ const eventTypes = {
       captured: 'onChangeCapture',
     },
     dependencies: [
-      TOP_BLUR,
-      TOP_CHANGE,
-      TOP_CLICK,
-      TOP_FOCUS,
-      TOP_INPUT,
-      TOP_KEY_DOWN,
-      TOP_KEY_UP,
-      TOP_SELECTION_CHANGE,
+      'topBlur',
+      'topChange',
+      'topClick',
+      'topFocus',
+      'topInput',
+      'topKeyDown',
+      'topKeyUp',
+      'topSelectionChange',
     ],
   },
 };
@@ -111,7 +100,7 @@ function getInstIfValueChanged(targetInst) {
 }
 
 function getTargetInstForChangeEvent(topLevelType, targetInst) {
-  if (topLevelType === TOP_CHANGE) {
+  if (topLevelType === 'topChange') {
     return targetInst;
   }
 }
@@ -120,7 +109,7 @@ function getTargetInstForChangeEvent(topLevelType, targetInst) {
  * SECTION: handle `input` event
  */
 let isInputEventSupported = false;
-if (canUseDOM) {
+if (ExecutionEnvironment.canUseDOM) {
   // IE9 claims to support the input event but fails to trigger it when
   // deleting text, so we ignore its input events.
   isInputEventSupported =
@@ -166,7 +155,7 @@ function handlePropertyChange(nativeEvent) {
 }
 
 function handleEventsForInputEventPolyfill(topLevelType, target, targetInst) {
-  if (topLevelType === TOP_FOCUS) {
+  if (topLevelType === 'topFocus') {
     // In IE9, propertychange fires for most input events but is buggy and
     // doesn't fire when text is deleted, but conveniently, selectionchange
     // appears to fire in all of the remaining cases so we catch those and
@@ -179,7 +168,7 @@ function handleEventsForInputEventPolyfill(topLevelType, target, targetInst) {
     // missed a blur event somehow.
     stopWatchingForValueChange();
     startWatchingForValueChange(target, targetInst);
-  } else if (topLevelType === TOP_BLUR) {
+  } else if (topLevelType === 'topBlur') {
     stopWatchingForValueChange();
   }
 }
@@ -187,9 +176,9 @@ function handleEventsForInputEventPolyfill(topLevelType, target, targetInst) {
 // For IE8 and IE9.
 function getTargetInstForInputEventPolyfill(topLevelType, targetInst) {
   if (
-    topLevelType === TOP_SELECTION_CHANGE ||
-    topLevelType === TOP_KEY_UP ||
-    topLevelType === TOP_KEY_DOWN
+    topLevelType === 'topSelectionChange' ||
+    topLevelType === 'topKeyUp' ||
+    topLevelType === 'topKeyDown'
   ) {
     // On the selectionchange event, the target is just document which isn't
     // helpful for us so just check activeElement instead.
@@ -221,28 +210,32 @@ function shouldUseClickEvent(elem) {
 }
 
 function getTargetInstForClickEvent(topLevelType, targetInst) {
-  if (topLevelType === TOP_CLICK) {
+  if (topLevelType === 'topClick') {
     return getInstIfValueChanged(targetInst);
   }
 }
 
 function getTargetInstForInputOrChangeEvent(topLevelType, targetInst) {
-  if (topLevelType === TOP_INPUT || topLevelType === TOP_CHANGE) {
+  if (topLevelType === 'topInput' || topLevelType === 'topChange') {
     return getInstIfValueChanged(targetInst);
   }
 }
 
-function handleControlledInputBlur(node) {
-  let state = node._wrapperState;
+function handleControlledInputBlur(inst, node) {
+  // TODO: In IE, inst is occasionally null. Why?
+  if (inst == null) {
+    return;
+  }
+
+  // Fiber and ReactDOM keep wrapper state in separate places
+  let state = inst._wrapperState || node._wrapperState;
 
   if (!state || !state.controlled || node.type !== 'number') {
     return;
   }
 
-  if (!disableInputAttributeSyncing) {
-    // If controlled, assign the value attribute to the current value on blur
-    setDefaultValue(node, 'number', node.value);
-  }
+  // If controlled, assign the value attribute to the current value on blur
+  setDefaultValue(node, 'number', node.value);
 }
 
 /**
@@ -299,8 +292,8 @@ const ChangeEventPlugin = {
     }
 
     // When blurring, set the value attribute for number inputs
-    if (topLevelType === TOP_BLUR) {
-      handleControlledInputBlur(targetNode);
+    if (topLevelType === 'topBlur') {
+      handleControlledInputBlur(targetInst, targetNode);
     }
   },
 };
